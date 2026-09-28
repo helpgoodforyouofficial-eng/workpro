@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Bill Generator — Stock Manager</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Stock CSS -->
+    <link rel="stylesheet" href="stock.css">
+
+    <!-- Global Dark Theme & Theme Sync -->
+    <link rel="stylesheet" href="dark-theme.css">
+    <script src="theme-sync.js"></script>
+
+    <!-- 🆕 Z-INDEX FIX (SweetAlert hamesha sab se upar!) -->
+    <style>
+        .swal2-container {
+            z-index: 999999 !important;
+        }
+        #stockModalOverlay,
+        #historyModalOverlay {
+            z-index: 999995 !important;
+        }
+    </style>
+</head>
+<body>
+
+<div class="panel-container">
+
+    <!-- ===== 📊 STATS CARDS (4x) ===== -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#3498db;">📦</div>
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-label">Total Items</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#27ae60;">💰</div>
+            <div class="stat-value" id="statValue">0</div>
+            <div class="stat-label">Stock Value</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#f39c12;">⚠️</div>
+            <div class="stat-value" id="statLow">0</div>
+            <div class="stat-label">Low Stock</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background:#e74c3c;">💥</div>
+            <div class="stat-value" id="statOut">0</div>
+            <div class="stat-label">Out of Stock</div>
+        </div>
+    </div>
+
+    <!-- ===== 🔍 SEARCH + FILTERS (Sticky) ===== -->
+    <div class="search-filter-bar">
+        <div class="search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="Item ka naam likhein...">
+        </div>
+        <div class="filter-chips">
+            <button class="filter-chip active" data-filter="all">All</button>
+            <button class="filter-chip" data-filter="low">⚠️ Low</button>
+            <button class="filter-chip" data-filter="out">💥 Out</button>
+            <button class="filter-chip" data-filter="instock">✅ In Stock</button>
+        </div>
+    </div>
+
+    <!-- ===== ➕ ADD ITEM (Collapsible Form) ===== -->
+    <div class="panel-card">
+        <div class="add-item-header" id="addItemToggle">
+            <h2><i class="fas fa-plus-circle"></i> Add New Item</h2>
+            <i class="fas fa-chevron-down toggle-arrow" id="toggleArrow"></i>
+        </div>
+        <form id="addItemForm" class="panel-form" style="display:none;">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>📝 Item Name *</label>
+                    <input type="text" id="itemName" placeholder="e.g. Baby Oil" required maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label>📏 Unit *</label>
+                    <select id="itemUnit" required>
+                        <option value="unit">Unit</option>
+                        <optgroup label="⚖️ Weight">
+                            <option value="kg">Kilogram (kg)</option>
+                            <option value="g">Gram (g)</option>
+                            <option value="pound">Pound (lb)</option>
+                            <option value="maund">Maund (40kg)</option>
+                        </optgroup>
+                        <optgroup label="🧴 Volume">
+                            <option value="liter">Liter (L)</option>
+                            <option value="gallon">Gallon</option>
+                        </optgroup>
+                        <optgroup label="🔢 Count">
+                            <option value="pcs">Piece (pcs)</option>
+                            <option value="dozen">Dozen</option>
+                        </optgroup>
+                        <optgroup label="📦 Packing">
+                            <option value="packet">Packet</option>
+                            <option value="bag">Bag</option>
+                            <option value="box">Box</option>
+                            <option value="carton">Carton</option>
+                            <option value="bottle">Bottle</option>
+                            <option value="can">Can</option>
+                        </optgroup>
+                        <optgroup label="📏 Length">
+                            <option value="meter">Meter (m)</option>
+                            <option value="feet">Feet (ft)</option>
+                        </optgroup>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>🔢 Quantity *</label>
+                    <input type="number" id="itemQty" placeholder="0" required min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>💰 Sale Rate *</label>
+                    <input type="number" id="itemRate" placeholder="0" required min="0" step="0.01">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>💵 Purchase Rate (optional)</label>
+                    <input type="number" id="itemPurchase" placeholder="0" min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>⚠️ Low Stock Limit (optional)</label>
+                    <input type="number" id="itemLimit" placeholder="10" min="0">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="saveItemBtn">
+                <i class="fas fa-save"></i> SAVE ITEM
+            </button>
+        </form>
+    </div>
+
+    <!-- ===== 📋 ITEMS LIST ===== -->
+    <div class="panel-card">
+        <div class="card-header">
+            <h2><i class="fas fa-boxes"></i> Items (<span id="itemCount">0</span>/<span id="itemLimit">50</span>)</h2>
+        </div>
+        <div id="itemsList">
+            <div class="loading-inline">Loading items...</div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Firebase SDK (Compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<!-- 📥📤 STOCK IN/OUT MODAL -->
+<div id="stockModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; align-items:center; justify-content:center; padding:15px;">
+    <div style="background:#fff; border-radius:16px; padding:25px; width:100%; max-width:380px;">
+        <h3 id="stockModalTitle" style="color:var(--primary); margin-bottom:5px;">📥 Stock IN</h3>
+        <p id="stockModalItem" style="color:#7f8c8d; font-size:13px; margin-bottom:15px;"></p>
+        
+        <div class="form-group">
+            <label>🔢 Quantity *</label>
+            <input type="number" id="modalQty" min="0" step="0.01" placeholder="0" required>
+        </div>
+        <div class="form-group">
+            <label>📝 Reason *</label>
+            <select id="modalReason">
+                <!-- 🆕 Options JS se aayenge (STOCK_REASONS — mode ke hisaab se!) -->
+            </select>
+        </div>
+        <div class="form-group">
+            <label>📝 Note (optional)</label>
+            <input type="text" id="modalNote" maxlength="100" placeholder="Koi note...">
+        </div>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn" style="flex:1; background:#95a5a6; color:#fff;" onclick="closeStockModal()">Cancel</button>
+            <button class="btn" style="flex:1; background:var(--accent); color:#fff;" id="modalConfirmBtn">✅ Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- 📜 HISTORY MODAL -->
+<div id="historyModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:99999; align-items:center; justify-content:center; padding:15px;">
+    <div style="background:#fff; border-radius:16px; padding:25px; width:100%; max-width:420px; max-height:80vh; overflow-y:auto;">
+        <h3 id="historyTitle" style="color:var(--primary); margin-bottom:15px;">📜 Movement History</h3>
+        <div id="historyContent"></div>
+        <button class="btn" style="width:100%; background:#95a5a6; color:#fff; margin-top:15px;" onclick="closeHistoryModal()">Close</button>
+    </div>
+</div>
+    
+    <!-- 🧭 SIDEBAR SYSTEM -->
+<script src="sidebar.js"></script>
+<script src="stock.js"></script>
+</body>
+</html>

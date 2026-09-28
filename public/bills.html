@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Easy Bill Generator — New Bill</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2c3e50">
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- 🆕 HTML2CANVAS (JPG banane ke liye — ZAROORI!) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Panels CSS -->
+    <link rel="stylesheet" href="panels.css">
+
+    <!-- Bills CSS -->
+    <link rel="stylesheet" href="bills.css">
+
+    <!-- Global Dark Theme & Theme Sync -->
+    <link rel="stylesheet" href="dark-theme.css">
+    <script src="theme-sync.js"></script>
+
+    <!-- 🆕 Z-INDEX FIX + TAX ROW STYLES -->
+    <style>
+        .swal2-container { z-index: 999999 !important; }
+        .suggest-box { z-index: 99999; }
+        .total-row .tax-inline {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .total-row .tax-inline input[type="checkbox"] {
+            width: 16px; height: 16px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+        .total-row .tax-inline input[type="number"] {
+            width: 60px; padding: 5px;
+            border: 1px solid #ddd; border-radius: 6px;
+            text-align: right;
+        }
+        .total-row .tax-inline label {
+            font-weight: bold; color: #856404;
+            margin: 0; font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== TOP BAR ===== -->
+<div class="panel-topbar">
+    <div class="brand">
+        <div class="logo-mini">🧾</div>
+        <div>
+            <div class="brand-name">New Bill</div>
+            <div class="brand-sub" id="modeLabel">📦 Stock Mode</div>
+        </div>
+    </div>
+    <div class="top-actions">
+        <button class="btn btn-back" onclick="window.location.href='dashboard.html'">🏠 Dashboard</button>
+        <button class="btn btn-logout" id="logoutBtn">🚪 Logout</button>
+    </div>
+</div>
+
+<div class="panel-container">
+
+    <!-- ===== MODE TABS ===== -->
+    <div class="panel-card">
+        <div class="mode-tabs">
+            <button class="mode-tab active" id="tabStock">📦 Bill from Stock</button>
+            <button class="mode-tab" id="tabInstant" style="display:none;">⚡ Instant Bill</button>
+        </div>
+
+        <div class="billno-box">
+            <span class="label">🧾 Bill No:</span>
+            <span class="value" id="billNoDisplay">—</span>
+        </div>
+
+        <!-- 👤 CUSTOMER -->
+        <div class="form-group">
+            <label>👤 Customer Name (type karein — suggestions! Ya Counter Sale)</label>
+            <input type="text" id="custNameInput" placeholder="Counter Sale" autocomplete="off">
+            <div class="suggest-box" id="custSuggest"></div>
+        </div>
+
+        <!-- 🆕 CUSTOMER INFO DISPLAY -->
+        <div class="cust-info-box" id="custInfoBox"></div>
+
+        <!-- 📝 ITEMS -->
+        <div class="card-header" style="margin-top:10px;">
+            <h2><i class="fas fa-list"></i> Items</h2>
+        </div>
+        <div id="itemsRows"></div>
+        <button type="button" class="add-row-btn" id="addItemRowBtn">
+            <i class="fas fa-plus"></i> Add Item Row
+        </button>
+
+        <!-- 💰 TOTALS (Tax row included!) -->
+        <div class="totals-box" style="margin-top:15px;">
+            <div class="total-row">
+                <span>Sub Total:</span>
+                <span>Rs <span id="sumSubTotal">0.00</span></span>
+            </div>
+            <div class="total-row">
+    <span>Discount:</span>
+    <input type="number" id="sumDiscount" value="0" min="0" step="0.01"
+           style="width:90px; padding:6px; border:1px solid #ddd; border-radius:6px; text-align:right;">
+</div>
+
+<!-- 🆕 PREVIOUS BALANCE DISPLAY -->
+<div class="total-row">
+    <span>Previous Balance:</span>
+    <span>Rs <span id="sumPrevBalance">0.00</span></span>
+</div>
+            <!-- 🆕 TAX ROW (checkbox + rate) -->
+            <div class="total-row">
+                <span class="tax-inline">
+                    <input type="checkbox" id="taxEnabled">
+                    <label for="taxEnabled">Tax %:</label>
+                    <input type="number" id="taxRate" value="0" min="0" step="0.01">
+                </span>
+                <span>+ Rs <span id="sumTax">0.00</span></span>
+            </div>
+            <div class="total-row grand">
+                <span>Grand Total:</span>
+                <span>Rs <span id="sumGrand">0.00</span></span>
+            </div>
+            <div class="total-row">
+                <span>💵 Received:</span>
+                <input type="number" id="sumReceived" value="0" min="0" step="0.01"
+                       style="width:90px; padding:6px; border:1px solid #ddd; border-radius:6px; text-align:right;">
+            </div>
+            <div class="total-row balance">
+                <span>Balance:</span>
+                <span>Rs <span id="sumBalance">0.00</span></span>
+            </div>
+        </div>
+
+        <button class="btn-save-bill" id="saveBillBtn" style="margin-top:15px;">
+            💾 SAVE BILL
+        </button>
+    </div>
+
+    <!-- 🆕✅ SUCCESS SCREEN -->
+    <div class="panel-card" id="successScreen" style="display:none; border-top: 4px solid var(--accent);">
+        <div style="text-align:center; padding: 15px 0 20px;">
+            <div style="font-size:60px;">✅</div>
+            <h2 style="color: var(--primary); margin: 10px 0 5px;">Bill Saved Successfully!</h2>
+            <div style="font-size: 22px; font-weight: bold; color: var(--accent);" id="ssBillNo">STK-1</div>
+            <div style="font-size: 14px; color: #7f8c8d; margin-top: 5px;" id="ssCustomer">—</div>
+        </div>
+
+        <div class="totals-box" style="margin-bottom: 20px;">
+    <div class="total-row"><span>Grand Total:</span><span>Rs <span id="ssGrand">0.00</span></span></div>
+    <div class="total-row"><span>Tax:</span><span>Rs <span id="ssTax">0.00</span></span></div>
+    <div class="total-row"><span>Previous Balance:</span><span>Rs <span id="ssPrevBalance">0.00</span></span></div>
+    <div class="total-row"><span>Received:</span><span>Rs <span id="ssReceived">0.00</span></span></div>
+    <div class="total-row balance"><span>Balance:</span><span>Rs <span id="ssBalance">0.00</span></span></div>
+</div>
+        
+        <!-- 🎨 Quick Print Template Selector on Success Screen -->
+        <div style="background: rgba(0,0,0,0.03); border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-bottom: 15px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div style="font-size: 13px; font-weight: bold; color: var(--primary);">
+                🎨 Print Template:
+            </div>
+            <select id="ssTemplateSelect" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #ccc; font-size: 12px; font-weight: bold;">
+                <option value="template4">⚡ Modern Minimal (Default)</option>
+                <option value="template1">🇵🇰 Urdu Classic (Nastaliq)</option>
+                <option value="template2">📋 Traders English (Big Header)</option>
+                <option value="template3">🇵🇰 Urdu + English Mix</option>
+                <option value="template5">💎 Premium Full (All Boxes)</option>
+                <option value="template6">🧾 Thermal Slip (58mm / 80mm)</option>
+                <option value="template7">📦 FMCG Distribution Invoice</option>
+                <option value="template8">🇵🇰 Classic Wholesale Urdu Grid</option>
+            </select>
+        </div>
+
+        <div class="output-grid">
+            <button class="output-btn" id="outPrintBtn" style="background: var(--primary);">
+                <i class="fas fa-print"></i> PRINT
+            </button>
+            <button class="output-btn" id="outPdfBtn" style="background: #e74c3c;">
+                <i class="fas fa-file-pdf"></i> PDF
+            </button>
+            <button class="output-btn" id="outJpgBtn" style="background: #f39c12;">
+                <i class="fas fa-image"></i> JPG
+            </button>
+            <button class="output-btn" id="outShareBtn" style="background: #25d366;">
+                <i class="fab fa-whatsapp"></i> SHARE
+            </button>
+        </div>
+
+        <button class="btn-new-bill" id="outNewBillBtn">
+            🆕 NEW BILL (Fresh Start)
+        </button>
+    </div>
+
+</div>
+
+<!-- Firebase SDK (Compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<!-- 🧭 SIDEBAR SYSTEM -->
+<script src="sidebar.js"></script>
+<!-- ⚙️ PRINT ENGINE & CHECKBOX CONTROLS -->
+<script src="print-settings.js"></script>
+<!-- 🎨 BILL TEMPLATES (bills.js se PEHLE load!) -->
+<script src="bill-templates.js"></script>
+<!-- 🧾 BILLS LOGIC -->
+<script src="bills.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+<script>eruda.init();</script>
+</body>
+</html>
