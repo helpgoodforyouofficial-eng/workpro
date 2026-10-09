@@ -88,7 +88,10 @@ const MainAppContent: React.FC = () => {
           </button>
           <button
             type="button"
-            onClick={() => setShowTopInstallBanner(false)}
+            onClick={() => {
+              setShowTopInstallBanner(false);
+              localStorage.setItem('taj_pos_banner_closed', 'true');
+            }}
             className="text-slate-400 hover:text-slate-600 font-bold text-sm ml-2 cursor-pointer"
           >
             &times;

@@ -198,17 +198,19 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const isStandalone =
         window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as any).standalone === true ||
-        localStorage.getItem('taj_pos_installed') === 'true';
+        localStorage.getItem('taj_pos_installed') === 'true' ||
+        localStorage.getItem('taj_pos_banner_closed') === 'true';
       return !isStandalone;
     }
-    return true;
+    return false;
   });
 
   useEffect(() => {
-    // Check if in standalone mode
+    // Check if in standalone mode or previously marked as installed
     if (
       window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as any).standalone === true
+      (window.navigator as any).standalone === true ||
+      localStorage.getItem('taj_pos_installed') === 'true'
     ) {
       setIsAppInstalled(true);
       setShowTopInstallBanner(false);
@@ -218,7 +220,9 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const handleBeforeInstall = (e: any) => {
       e.preventDefault();
       setInstallPromptEvent(e);
-      if (!isAppInstalled) {
+      const isAlready = localStorage.getItem('taj_pos_installed') === 'true' ||
+        localStorage.getItem('taj_pos_banner_closed') === 'true';
+      if (!isAlready) {
         setShowTopInstallBanner(true);
       }
     };
@@ -228,6 +232,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setShowTopInstallBanner(false);
       setInstallPromptEvent(null);
       localStorage.setItem('taj_pos_installed', 'true');
+      localStorage.setItem('taj_pos_banner_closed', 'true');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
@@ -237,7 +242,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, [isAppInstalled]);
+  }, []);
 
   const installApp = async () => {
     if (installPromptEvent) {
@@ -247,11 +252,16 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsAppInstalled(true);
         setShowTopInstallBanner(false);
         localStorage.setItem('taj_pos_installed', 'true');
+        localStorage.setItem('taj_pos_banner_closed', 'true');
       }
       setInstallPromptEvent(null);
     } else {
+      setIsAppInstalled(true);
+      setShowTopInstallBanner(false);
+      localStorage.setItem('taj_pos_installed', 'true');
+      localStorage.setItem('taj_pos_banner_closed', 'true');
       alert(
-        'Taj POS App install karne ke liye apne browser ke upar daayein konay walay (⋮) menu par click karein aur "Install app" ya "Add to Home screen" select karein!'
+        'Taj POS App install ho chuki hai! Agar home screen par icon mojood hai toh direct Taj POS icon se open karein.'
       );
     }
   };
