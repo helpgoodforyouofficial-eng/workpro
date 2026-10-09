@@ -21,7 +21,9 @@ import {
   Flag,
   Wrench,
   Download,
-  Upload
+  Upload,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 import { usePOS, ActiveView } from '../context/POSContext';
 import { TajLogo } from './TajLogo';
@@ -42,7 +44,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     toggleMaintenanceMode,
     isMaintenanceMode,
     exportDataJSON,
-    importDataJSON
+    importDataJSON,
+    isAppInstalled,
+    installApp
   } = usePOS();
 
   const handleNav = (view: ActiveView) => {
@@ -240,15 +244,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             </label>
           </div>
 
-          {/* Download Complete Project Source ZIP */}
-          <a
-            href="/taj-pos-project.zip"
-            download="taj-pos-project.zip"
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Download Project ZIP (For GitHub)</span>
-          </a>
+          {/* PWA Install Button or Already Installed Badge */}
+          {isAppInstalled ? (
+            <div className="w-full py-2.5 px-3 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>✓ Already Installed</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={installApp}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-700/20 active:scale-95"
+            >
+              <Zap className="w-4 h-4 text-amber-300 fill-amber-300" />
+              <span>⚡ Install Taj POS App</span>
+            </button>
+          )}
 
           {/* Modern Logout Button matching user's PHP CSS */}
           <button

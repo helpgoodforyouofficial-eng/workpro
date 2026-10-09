@@ -85,6 +85,12 @@ interface POSContextType {
   showWhatsNewModal: boolean;
   setShowWhatsNewModal: (show: boolean) => void;
 
+  // PWA Installation
+  isAppInstalled: boolean;
+  installApp: () => void;
+  showTopInstallBanner: boolean;
+  setShowTopInstallBanner: (show: boolean) => void;
+
   // Data Collections
   dailyTransactions: DailyTransaction[];
   backCashTransactions: BackCashTransaction[];
@@ -173,6 +179,82 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
   const [showIndependenceModal, setShowIndependenceModal] = useState<boolean>(false);
   const [showWhatsNewModal, setShowWhatsNewModal] = useState<boolean>(false);
+
+  // PWA State Management
+  const [isAppInstalled, setIsAppInstalled] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return (
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        localStorage.getItem('taj_pos_installed') === 'true'
+      );
+    }
+    return false;
+  });
+
+  const [installPromptEvent, setInstallPromptEvent] = useState<any>(null);
+  const [showTopInstallBanner, setShowTopInstallBanner] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true ||
+        localStorage.getItem('taj_pos_installed') === 'true';
+      return !isStandalone;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    // Check if in standalone mode
+    if (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as any).standalone === true
+    ) {
+      setIsAppInstalled(true);
+      setShowTopInstallBanner(false);
+      localStorage.setItem('taj_pos_installed', 'true');
+    }
+
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault();
+      setInstallPromptEvent(e);
+      if (!isAppInstalled) {
+        setShowTopInstallBanner(true);
+      }
+    };
+
+    const handleAppInstalled = () => {
+      setIsAppInstalled(true);
+      setShowTopInstallBanner(false);
+      setInstallPromptEvent(null);
+      localStorage.setItem('taj_pos_installed', 'true');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, [isAppInstalled]);
+
+  const installApp = async () => {
+    if (installPromptEvent) {
+      installPromptEvent.prompt();
+      const { outcome } = await installPromptEvent.userChoice;
+      if (outcome === 'accepted') {
+        setIsAppInstalled(true);
+        setShowTopInstallBanner(false);
+        localStorage.setItem('taj_pos_installed', 'true');
+      }
+      setInstallPromptEvent(null);
+    } else {
+      alert(
+        'Taj POS App install karne ke liye apne browser ke upar daayein konay walay (⋮) menu par click karein aur "Install app" ya "Add to Home screen" select karein!'
+      );
+    }
+  };
 
   const yesterdayDate = getYesterdayDateString(filterDate);
 
@@ -975,6 +1057,10 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setShowIndependenceModal,
         showWhatsNewModal,
         setShowWhatsNewModal,
+        isAppInstalled,
+        installApp,
+        showTopInstallBanner,
+        setShowTopInstallBanner,
         dailyTransactions,
         backCashTransactions,
         wholesalers,

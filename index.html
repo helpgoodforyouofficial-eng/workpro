@@ -9,10 +9,21 @@
     <meta property="og:description" content="Taj Karyana & Mobile Shop - Complete POS, Daily Cash Book, Easyload Ledger & Khata Management System" />
     <meta property="og:type" content="website" />
     <meta name="theme-color" content="#2c3e50" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Sans+Urdu:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <meta name="twitter:card" content="summary_large_image" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('PWA Service Worker registered:', reg.scope))
+            .catch(err => console.log('SW registration failed:', err));
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
@@ -20,12 +31,12 @@
       if (!window.__vite_plugin_react_preamble_installed__) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = './assets/index-YQtl1TDP.css';
+        link.href = './assets/index-CHM1eCMV.css';
         document.head.appendChild(link);
 
         const script = document.createElement('script');
         script.type = 'module';
-        script.src = './assets/index-BJyWROaP.js';
+        script.src = './assets/index-DhORPd2X.js';
         document.body.appendChild(script);
       }
     </script>

@@ -26,34 +26,16 @@ import { DeletedHistoryView } from './views/DeletedHistoryView';
 import { EditHistoryLogsView } from './views/EditHistoryLogsView';
 
 const MainAppContent: React.FC = () => {
-  const { currentUser, activeView, setActiveView } = usePOS();
+  const {
+    currentUser,
+    activeView,
+    setActiveView,
+    isAppInstalled,
+    installApp,
+    showTopInstallBanner,
+    setShowTopInstallBanner
+  } = usePOS();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showPwaBanner, setShowPwaBanner] = useState(true);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-
-  useEffect(() => {
-    const handleBeforeInstall = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setShowPwaBanner(true);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setShowPwaBanner(false);
-      }
-      setDeferredPrompt(null);
-    } else {
-      alert('Ye app install karne ke liye apne browser ke menu (⋮) par ja kar "Add to Home Screen" ya "Install App" select karein!');
-    }
-  };
 
   if (!currentUser) {
     return <LoginView />;
@@ -91,7 +73,7 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f4f7f6] text-slate-800 font-sans flex flex-col selection:bg-blue-600 selection:text-white">
       {/* PWA Install Banner matching PHP */}
-      {showPwaBanner && (
+      {!isAppInstalled && showTopInstallBanner && (
         <div className="bg-white text-[#2c3e50] px-4 py-2 text-center text-xs font-semibold shadow-md border-b-2 border-[#27ae60] flex items-center justify-center gap-3 sticky top-0 z-30 animate-in slide-in-from-top duration-300">
           <span className="flex items-center gap-1.5">
             <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
@@ -99,15 +81,15 @@ const MainAppContent: React.FC = () => {
           </span>
           <button
             type="button"
-            onClick={handleInstallClick}
-            className="px-3.5 py-1 bg-[#27ae60] hover:bg-emerald-700 text-white font-bold rounded-full text-[11px] transition-colors shadow-xs"
+            onClick={installApp}
+            className="px-3.5 py-1 bg-[#27ae60] hover:bg-emerald-700 text-white font-bold rounded-full text-[11px] transition-colors shadow-xs active:scale-95 cursor-pointer"
           >
             Install
           </button>
           <button
             type="button"
-            onClick={() => setShowPwaBanner(false)}
-            className="text-slate-400 hover:text-slate-600 font-bold text-sm ml-2"
+            onClick={() => setShowTopInstallBanner(false)}
+            className="text-slate-400 hover:text-slate-600 font-bold text-sm ml-2 cursor-pointer"
           >
             &times;
           </button>

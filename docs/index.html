@@ -9,12 +9,23 @@
     <meta property="og:description" content="Taj Karyana & Mobile Shop - Complete POS, Daily Cash Book, Easyload Ledger & Khata Management System" />
     <meta property="og:type" content="website" />
     <meta name="theme-color" content="#2c3e50" />
+    <link rel="manifest" href="./assets/manifest-Y2EB5ijX.json" />
+    <link rel="apple-touch-icon" href="./assets/icon-192-D5iXKw-y.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Sans+Urdu:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <meta name="twitter:card" content="summary_large_image" />
-    <script type="module" crossorigin src="./assets/index-CEEQl6pF.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-YQtl1TDP.css">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('PWA Service Worker registered:', reg.scope))
+            .catch(err => console.log('SW registration failed:', err));
+        });
+      }
+    </script>
+    <script type="module" crossorigin src="./assets/index-D5fuAmJZ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CHM1eCMV.css">
   </head>
   <body>
     <div id="root"></div>
