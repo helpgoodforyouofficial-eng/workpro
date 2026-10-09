@@ -30,7 +30,7 @@ export interface BackCashTransaction {
   amount: number;
   note: string;
   transaction_date: string; // YYYY-MM-DD
-  created_by: 'admin' | 'user';
+  created_by: string;
 }
 
 export interface WholesalerBill {
