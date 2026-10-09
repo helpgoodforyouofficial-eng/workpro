@@ -15,42 +15,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&family=Noto+Sans+Urdu:wght@400;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <meta name="twitter:card" content="summary_large_image" />
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js').then(reg => {
-            reg.update();
-            reg.onupdatefound = () => {
-              const installing = reg.installing;
-              if (installing) {
-                installing.onstatechange = () => {
-                  if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-                    window.location.reload();
-                  }
-                };
-              }
-            };
-          }).catch(err => console.log('SW registration error:', err));
-        });
-      }
-    </script>
   </head>
   <body>
     <div id="root"></div>
-    <script type="module">
-      if (!window.__vite_plugin_react_preamble_installed__) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = './assets/index-DBOvsINI.css';
-        document.head.appendChild(link);
-
-        const script = document.createElement('script');
-        script.type = 'module';
-        script.src = './assets/index-zmmlbA03.js';
-        document.body.appendChild(script);
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
