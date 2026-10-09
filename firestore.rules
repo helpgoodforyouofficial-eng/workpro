@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    match /daily_transactions/{txId} {
+      allow read, write: if true;
+    }
+
+    match /back_cash_transactions/{txId} {
+      allow read, write: if true;
+    }
+
+    match /wholesaler_bills/{billId} {
+      allow read, write: if true;
+    }
+
+    match /customer_bills/{billId} {
+      allow read, write: if true;
+    }
+
+    match /easyload_records/{dateId} {
+      allow read, write: if true;
+    }
+
+    match /bottle_items/{itemId} {
+      allow read, write: if true;
+    }
+
+    match /deleted_history/{delId} {
+      allow read, write: if true;
+    }
+
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

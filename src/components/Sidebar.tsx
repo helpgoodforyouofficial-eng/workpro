@@ -23,7 +23,8 @@ import {
   Download,
   Upload,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  Cloud
 } from 'lucide-react';
 import { usePOS, ActiveView } from '../context/POSContext';
 import { TajLogo } from './TajLogo';
@@ -46,7 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     exportDataJSON,
     importDataJSON,
     isAppInstalled,
-    installApp
+    installApp,
+    isFirebaseConnected
   } = usePOS();
 
   const handleNav = (view: ActiveView) => {
@@ -166,6 +168,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           >
             {userRole}
           </span>
+        </div>
+
+        {/* Firebase Cloud Sync Status Bar */}
+        <div className="px-4 py-2 bg-[#121e30] border-b border-slate-700/50 flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-1.5 text-slate-300 font-medium">
+            <Cloud className={`w-3.5 h-3.5 ${isFirebaseConnected ? 'text-emerald-400' : 'text-slate-400'}`} />
+            <span>Firebase Cloud:</span>
+          </div>
+          <div className="flex items-center gap-1 font-bold">
+            <span className={isFirebaseConnected ? 'text-emerald-400' : 'text-amber-400'}>
+              {isFirebaseConnected ? 'Connected' : 'Connecting...'}
+            </span>
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isFirebaseConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+              }`}
+            />
+          </div>
         </div>
 
         {/* Navigation List */}

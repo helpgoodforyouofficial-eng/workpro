@@ -4,8 +4,11 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { doc, getDocFromServer, setDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import {
   User,
+  UserRole,
   DailyTransaction,
   BackCashTransaction,
   WholesalerBill,
@@ -84,6 +87,10 @@ interface POSContextType {
   setShowIndependenceModal: (show: boolean) => void;
   showWhatsNewModal: boolean;
   setShowWhatsNewModal: (show: boolean) => void;
+
+  // Firebase Cloud Status
+  isFirebaseConnected: boolean;
+  firebaseSyncStatus: 'connected' | 'syncing' | 'offline';
 
   // PWA Installation
   isAppInstalled: boolean;
@@ -179,6 +186,29 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isMaintenanceMode, setIsMaintenanceMode] = useState<boolean>(false);
   const [showIndependenceModal, setShowIndependenceModal] = useState<boolean>(false);
   const [showWhatsNewModal, setShowWhatsNewModal] = useState<boolean>(false);
+
+  // Firebase Cloud State
+  const [isFirebaseConnected, setIsFirebaseConnected] = useState<boolean>(false);
+  const [firebaseSyncStatus, setFirebaseSyncStatus] = useState<'connected' | 'syncing' | 'offline'>('syncing');
+
+  useEffect(() => {
+    async function testFirebaseConnection() {
+      try {
+        setFirebaseSyncStatus('syncing');
+        await getDocFromServer(doc(db, 'test', 'connection'));
+        setIsFirebaseConnected(true);
+        setFirebaseSyncStatus('connected');
+      } catch (err: any) {
+        if (err?.code !== 'unavailable' && !err?.message?.includes('offline')) {
+          setIsFirebaseConnected(true);
+          setFirebaseSyncStatus('connected');
+        } else {
+          setFirebaseSyncStatus('offline');
+        }
+      }
+    }
+    testFirebaseConnection();
+  }, []);
 
   // PWA State Management
   const [isAppInstalled, setIsAppInstalled] = useState<boolean>(() => {
@@ -1067,6 +1097,8 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setShowIndependenceModal,
         showWhatsNewModal,
         setShowWhatsNewModal,
+        isFirebaseConnected,
+        firebaseSyncStatus,
         isAppInstalled,
         installApp,
         showTopInstallBanner,

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, Zap, Download } from 'lucide-react';
+import { Menu, Zap, Download, Cloud } from 'lucide-react';
 import { POSProvider, usePOS } from './context/POSContext';
 import { Sidebar } from './components/Sidebar';
 import { TajLogo } from './components/TajLogo';
@@ -33,7 +33,8 @@ const MainAppContent: React.FC = () => {
     isAppInstalled,
     installApp,
     showTopInstallBanner,
-    setShowTopInstallBanner
+    setShowTopInstallBanner,
+    isFirebaseConnected
   } = usePOS();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -144,6 +145,18 @@ const MainAppContent: React.FC = () => {
             >
               <span>New Sale</span>
             </button>
+
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-xl text-xs font-semibold">
+              <Cloud className={`w-3.5 h-3.5 ${isFirebaseConnected ? 'text-emerald-600' : 'text-slate-400'}`} />
+              <span className="text-[11px] font-bold text-slate-700">
+                {isFirebaseConnected ? 'Firebase Cloud' : 'Offline'}
+              </span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isFirebaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                }`}
+              />
+            </div>
 
             <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-xl">
               <span className="font-bold text-slate-700">{currentUser.username}</span>
