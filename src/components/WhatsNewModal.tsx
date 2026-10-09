@@ -20,7 +20,7 @@ export const WhatsNewModal: React.FC = () => {
         <div className="bg-[#2c3e50] text-white px-5 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold text-base tracking-tight">What&apos;s New in v15.8</h3>
+            <h3 className="font-bold text-base tracking-tight">What&apos;s New in v15.8.2</h3>
           </div>
 
           <div className="flex items-center gap-2">

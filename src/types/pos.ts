@@ -3,9 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export type UserRole = 'admin' | 'manager' | 'cashier' | 'salesman' | 'user';
+
 export interface User {
   username: string;
-  role: 'admin' | 'user';
+  role: UserRole;
   name?: string;
 }
 
@@ -17,7 +19,7 @@ export interface DailyTransaction {
   amount: number;
   description: string;
   transaction_date: string; // YYYY-MM-DD
-  created_by: 'admin' | 'user';
+  created_by: string;
   party_type?: 'customer' | 'wholesaler' | 'none';
   bill_id?: string;
 }
@@ -103,7 +105,7 @@ export interface EditHistoryRecord {
   source: 'shop' | 'back';
   old_amount: number;
   new_amount: number;
-  edited_by: 'admin' | 'user';
+  edited_by: string;
   edited_at: string;
   is_read: boolean;
   note?: string;
@@ -118,7 +120,7 @@ export interface DeletedHistoryRecord {
   amount: number;
   note: string;
   transaction_date: string;
-  deleted_by: 'admin' | 'user';
+  deleted_by: string;
   deleted_at: string;
   bill_id?: string;
   party_type?: 'customer' | 'wholesaler' | 'none';

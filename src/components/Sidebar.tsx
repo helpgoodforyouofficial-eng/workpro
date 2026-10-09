@@ -76,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     reader.readAsText(file);
   };
 
-  const navItems: Array<{ id: ActiveView; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  const allNavItems: Array<{ id: ActiveView; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'daily_cash', label: 'Daily Cash Book', icon: Wallet },
     { id: 'back_cash', label: 'Back Cash Manager', icon: Building2 },
@@ -88,6 +88,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { id: 'pos', label: 'New Sale (POS Counter)', icon: ShoppingCart },
     { id: 'deleted_history', label: 'Deleted Logs (Trash)', icon: Trash2 }
   ];
+
+  const userRole = currentUser?.role || 'admin';
+  const navItems = allNavItems.filter(item => {
+    if (userRole === 'admin') return true;
+    if (userRole === 'manager') return item.id !== 'deleted_history';
+    if (userRole === 'cashier') {
+      return ['dashboard', 'daily_cash', 'easyload', 'pos', 'items_price'].includes(item.id);
+    }
+    if (userRole === 'salesman') {
+      return ['dashboard', 'customer', 'items_price', 'pos'].includes(item.id);
+    }
+    return true;
+  });
 
   return (
     <>
@@ -113,7 +126,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <h1 className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
                 <span>Taj POS Pro</span>
                 <span className="text-[10px] px-1.5 py-0.2 bg-emerald-600 text-white rounded font-mono font-bold">
-                  v15.8
+                  v15.8.2
                 </span>
               </h1>
               <p className="text-[10px] text-amber-300 font-urdu">تاج کریانہ اینڈ موبائل شاپ</p>
@@ -132,22 +145,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {/* User Card */}
         <div className="px-4 py-3 bg-[#162235] border-b border-slate-700/40 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-200">
-              {currentUser?.username.charAt(0).toUpperCase()}
+            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-200 uppercase">
+              {currentUser?.username.charAt(0)}
             </div>
             <div>
               <div className="font-semibold text-slate-200">{currentUser?.username}</div>
-              <div className="text-[10px] text-slate-400 capitalize">{currentUser?.role || 'User'}</div>
+              <div className="text-[10px] text-slate-400 capitalize">{currentUser?.role || 'Admin'}</div>
             </div>
           </div>
           <span
             className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
-              currentUser?.role === 'admin'
+              userRole === 'admin'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                : userRole === 'manager'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                : userRole === 'cashier'
+                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
             }`}
           >
-            {currentUser?.role || 'user'}
+            {userRole}
           </span>
         </div>
 

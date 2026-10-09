@@ -18,9 +18,19 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('PWA Service Worker registered:', reg.scope))
-            .catch(err => console.log('SW registration failed:', err));
+          navigator.serviceWorker.register('./sw.js').then(reg => {
+            reg.update();
+            reg.onupdatefound = () => {
+              const installing = reg.installing;
+              if (installing) {
+                installing.onstatechange = () => {
+                  if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                    window.location.reload();
+                  }
+                };
+              }
+            };
+          }).catch(err => console.log('SW registration error:', err));
         });
       }
     </script>
@@ -31,12 +41,12 @@
       if (!window.__vite_plugin_react_preamble_installed__) {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = './assets/index-CHM1eCMV.css';
+        link.href = './assets/index-yzmi7gXn.css';
         document.head.appendChild(link);
 
         const script = document.createElement('script');
         script.type = 'module';
-        script.src = './assets/index-ImfoWD48.js';
+        script.src = './assets/index-DrTv9bXH.js';
         document.body.appendChild(script);
       }
     </script>

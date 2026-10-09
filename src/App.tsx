@@ -147,7 +147,17 @@ const MainAppContent: React.FC = () => {
 
             <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-xl">
               <span className="font-bold text-slate-700">{currentUser.username}</span>
-              <span className="text-[10px] font-bold uppercase bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded">
+              <span
+                className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                  currentUser.role === 'admin'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : currentUser.role === 'manager'
+                    ? 'bg-purple-100 text-purple-800'
+                    : currentUser.role === 'cashier'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}
+              >
                 {currentUser.role}
               </span>
             </div>

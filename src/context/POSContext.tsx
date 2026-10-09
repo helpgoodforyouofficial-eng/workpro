@@ -63,7 +63,7 @@ interface EasyloadSaleSummary {
 interface POSContextType {
   // Auth
   currentUser: User | null;
-  login: (username: string, role?: 'admin' | 'user') => boolean;
+  login: (username: string, role?: UserRole) => boolean;
   logout: () => void;
 
   // View Navigation
@@ -367,7 +367,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [systemSettings]);
 
   // Auth Functions
-  const login = (username: string, role: 'admin' | 'user' = 'user') => {
+  const login = (username: string, role: UserRole = 'user') => {
     const userRole = username.toLowerCase() === 'admin' ? 'admin' : role;
     const userObj: User = { username, role: userRole };
     setCurrentUser(userObj);
