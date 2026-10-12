@@ -6,35 +6,27 @@
 import React, { useState } from 'react';
 import {
   ShieldCheck,
-  UserCheck,
   Lock,
   User,
   LogIn,
-  Briefcase,
-  ShoppingBag,
-  Sparkles,
   AlertCircle,
-  KeyRound,
-  CheckCircle2
+  Sparkles,
+  Store,
+  Users
 } from 'lucide-react';
 import { usePOS } from '../context/POSContext';
 import { TajLogo } from '../components/TajLogo';
-import { UserRole } from '../types/pos';
 
 export const LoginView: React.FC = () => {
-  const { loginWithGoogle, loginStaff, login } = usePOS();
+  const { loginWithGoogle, loginStaff } = usePOS();
 
-  // Tab State: 'admin_google' | 'staff_login' | 'quick_demo'
-  const [activeTab, setActiveTab] = useState<'admin_google' | 'staff_login' | 'quick_demo'>('admin_google');
+  // Tab State: 'admin_google' | 'staff_login'
+  const [activeTab, setActiveTab] = useState<'admin_google' | 'staff_login'>('admin_google');
 
   // Staff Form State
   const [staffUsername, setStaffUsername] = useState<string>('');
   const [staffPassword, setStaffPassword] = useState<string>('');
-
-  // Demo Form State
-  const [demoUsername, setDemoUsername] = useState<string>('admin');
-  const [demoPassword, setDemoPassword] = useState<string>('admin123');
-  const [demoRole, setDemoRole] = useState<UserRole>('admin');
+  const [isStaffLoading, setIsStaffLoading] = useState<boolean>(false);
 
   // Loading & Error
   const [isGoogleLoading, setIsGoogleLoading] = useState<boolean>(false);
@@ -50,36 +42,25 @@ export const LoginView: React.FC = () => {
     }
   };
 
-  const handleStaffSubmit = (e: React.FormEvent) => {
+  const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!staffUsername.trim() || !staffPassword.trim()) {
       setError('Barahe karam Username aur Password dono darj karein.');
       return;
     }
-    const result = loginStaff(staffUsername, staffPassword);
+    setIsStaffLoading(true);
+    const result = await loginStaff(staffUsername, staffPassword);
+    setIsStaffLoading(false);
     if (!result.success) {
       setError(result.error || 'Ghalat details! Barahe karam Admin ki di gayi details darj karein.');
     }
   };
 
-  const handleDemoSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!demoUsername.trim()) {
-      setError('Username darj karein!');
-      return;
-    }
-    login(demoUsername.trim(), demoRole);
-  };
-
-  const handleQuickDemoClick = (uname: string, urole: UserRole) => {
-    login(uname, urole);
-  };
-
   return (
     <div className="min-h-screen bg-[#f0f2f5] flex items-center justify-center p-4 selection:bg-blue-600 selection:text-white">
       <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200/80 w-full max-w-md text-center relative overflow-hidden">
-        {/* Subtle top decoration */}
+        {/* Top Gradient Banner */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-600 via-amber-500 to-emerald-600" />
 
         {/* Taj Logo Emblem */}
@@ -93,25 +74,28 @@ export const LoginView: React.FC = () => {
             v15.8.2
           </span>
         </h2>
-        <p className="text-xs text-[#95a5a6] font-medium mt-0.5">Cloud POS & Khata Management System</p>
-        <p className="text-xs text-amber-600 font-urdu font-bold mt-0.5">تاج کریانہ اینڈ موبائل شاپ</p>
+        <p className="text-xs text-[#95a5a6] font-medium mt-0.5">Multi-User Cloud POS & Khata SaaS</p>
+        <p className="text-xs text-amber-600 font-urdu font-bold mt-0.5">تاج کریانہ اینڈ موبائل شاپ کلاؤڈ سسٹم</p>
 
-        {/* Login Type Tabs */}
-        <div className="mt-5 grid grid-cols-3 gap-1 p-1 bg-slate-100 rounded-2xl text-[11px] font-bold">
+        {/* Login Type Tabs (Real Accounts Only - No Dummy Bypass) */}
+        <div className="mt-5 grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-2xl text-[11px] font-bold">
           <button
             type="button"
             onClick={() => {
               setActiveTab('admin_google');
               setError('');
             }}
-            className={`py-2 px-1 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 ${
+            className={`py-2.5 px-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
               activeTab === 'admin_google'
                 ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <span>👑 Main Admin</span>
-            <span className="text-[9px] font-normal text-slate-400">Google Account</span>
+            <div className="flex items-center gap-1 text-slate-900 font-bold">
+              <Store className="w-3.5 h-3.5 text-blue-600" />
+              <span>👑 Dukandar / Malik</span>
+            </div>
+            <span className="text-[9px] font-normal text-slate-500">Real Gmail Login</span>
           </button>
 
           <button
@@ -120,30 +104,17 @@ export const LoginView: React.FC = () => {
               setActiveTab('staff_login');
               setError('');
             }}
-            className={`py-2 px-1 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 ${
+            className={`py-2.5 px-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
               activeTab === 'staff_login'
                 ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
                 : 'text-slate-500 hover:text-slate-800'
             }`}
           >
-            <span>💼 Staff / User</span>
-            <span className="text-[9px] font-normal text-slate-400">ID & Password</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('quick_demo');
-              setError('');
-            }}
-            className={`py-2 px-1 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 ${
-              activeTab === 'quick_demo'
-                ? 'bg-white text-slate-900 shadow-sm border border-slate-200/60'
-                : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <span>🧪 Demo Mode</span>
-            <span className="text-[9px] font-normal text-slate-400">One-Click</span>
+            <div className="flex items-center gap-1 text-slate-900 font-bold">
+              <Users className="w-3.5 h-3.5 text-purple-600" />
+              <span>💼 Staff / Mulazim</span>
+            </div>
+            <span className="text-[9px] font-normal text-slate-500">Admin Assigned ID</span>
           </button>
         </div>
 
@@ -159,10 +130,11 @@ export const LoginView: React.FC = () => {
           <div className="mt-6 space-y-4 text-left">
             <div className="p-3.5 bg-blue-50/70 border border-blue-100 rounded-2xl text-xs text-blue-900 space-y-1">
               <div className="font-bold flex items-center gap-1.5 text-blue-800">
-                <span>👑 Asli Malik / Main Admin Login</span>
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                <span>Asli Malik / Shop Owner Login</span>
               </div>
-              <p className="text-[11px] text-blue-700 leading-relaxed">
-                Main Admin apne real Google email address se login karein. Aapko bahesiyat Malik full control milega aur aap naye Staff accounts bana sakenge.
+              <p className="text-[11px] text-blue-700 leading-relaxed font-urdu">
+                ہر نیا دکاندار اپنے اصلی گوگل اکاؤنٹ سے لاگ ان کرے گا۔ آپ کا تمام ریکارڈ (گلہ، ادھار، کسٹمرز، ایزی لوڈ) بالکل 0 سے شروع ہوگا اور کسی دوسرے کو نظر نہیں آئے گا۔
               </p>
             </div>
 
@@ -191,11 +163,15 @@ export const LoginView: React.FC = () => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              <span>{isGoogleLoading ? 'Signing in with Google...' : 'Login with Google (Main Admin)'}</span>
+              <span>{isGoogleLoading ? 'Connecting to Google...' : 'Continue with Google (Gmail)'}</span>
             </button>
 
-            <div className="pt-2 text-center text-[11px] text-slate-400">
-              <span>Firebase Cloud Auth • Real Email Sync</span>
+            <div className="pt-2 text-center text-[11px] text-slate-400 space-y-0.5">
+              <div className="flex items-center justify-center gap-1 font-semibold text-slate-500">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Verified Google Accounts Only</span>
+              </div>
+              <p className="text-[10px] text-slate-400">Single Backend • Multi-User Isolated Stores</p>
             </div>
           </div>
         )}
@@ -205,8 +181,8 @@ export const LoginView: React.FC = () => {
           <form onSubmit={handleStaffSubmit} className="mt-6 space-y-3.5 text-xs text-left">
             <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl text-[11px] text-purple-900">
               <span className="font-bold">💼 Staff / Mulazim Login:</span>
-              <p className="mt-0.5 text-purple-700">
-                Admin ki banayi hui Username aur Password details darj karein.
+              <p className="mt-0.5 text-purple-700 font-urdu">
+                مالک / ایڈمن کی دی ہوئی یوزر نیم اور پاس ورڈ تفصیلات درج کریں۔
               </p>
             </div>
 
@@ -248,56 +224,13 @@ export const LoginView: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-600/30 text-sm flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer"
+              disabled={isStaffLoading}
+              className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-lg shadow-purple-600/30 text-sm flex items-center justify-center gap-2 transition-all active:scale-98 cursor-pointer disabled:opacity-60"
             >
               <LogIn className="w-4 h-4" />
-              <span>Staff Login Now</span>
+              <span>{isStaffLoading ? 'Checking Details...' : 'Staff Login Now'}</span>
             </button>
           </form>
-        )}
-
-        {/* Tab 3: Quick Demo Mode */}
-        {activeTab === 'quick_demo' && (
-          <div className="mt-6 text-left space-y-4">
-            <p className="text-[11px] text-slate-500">
-              Bina password ke direct testing ke liye neeche diye gaye demo buttons use karein:
-            </p>
-
-            <div className="grid grid-cols-2 gap-2 text-[10px]">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoClick('Demo Admin', 'admin')}
-                className="p-2.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Demo Admin</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoClick('Demo Manager', 'manager')}
-                className="p-2.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-800 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <Briefcase className="w-3.5 h-3.5 text-purple-600" />
-                <span>Demo Manager</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoClick('Demo Cashier', 'cashier')}
-                className="p-2.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-800 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span>Demo Cashier</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickDemoClick('Demo Salesman', 'salesman')}
-                className="p-2.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <ShoppingBag className="w-3.5 h-3.5 text-amber-600" />
-                <span>Demo Salesman</span>
-              </button>
-            </div>
-          </div>
         )}
 
         {/* Footer Text */}

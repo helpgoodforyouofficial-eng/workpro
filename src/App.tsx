@@ -11,6 +11,7 @@ import { TajLogo } from './components/TajLogo';
 import { WhatsNewModal } from './components/WhatsNewModal';
 import { MaintenanceModal } from './components/MaintenanceModal';
 import { IndependenceOverlay } from './components/IndependenceOverlay';
+import { ShopSetupModal } from './components/ShopSetupModal';
 
 import { LoginView } from './views/LoginView';
 import { DashboardView } from './views/DashboardView';
@@ -29,6 +30,7 @@ import { StaffManagementView } from './views/StaffManagementView';
 const MainAppContent: React.FC = () => {
   const {
     currentUser,
+    currentShop,
     activeView,
     setActiveView,
     isAppInstalled,
@@ -134,10 +136,10 @@ const MainAppContent: React.FC = () => {
               <TajLogo size="sm" showSubtitle={false} />
               <div>
                 <span className="font-black text-sm text-[#2c3e50] block tracking-tight leading-tight">
-                  Taj POS Pro
+                  {currentShop?.shop_name || currentUser.shopName || 'Taj POS Pro'}
                 </span>
                 <span className="text-[10px] text-amber-600 font-urdu block leading-tight font-bold">
-                  تاج کریانہ اینڈ موبائل شاپ
+                  {currentShop?.owner_name ? `مالک: ${currentShop.owner_name}` : 'تاج کریانہ اینڈ موبائل شاپ'}
                 </span>
               </div>
             </div>
@@ -190,6 +192,7 @@ const MainAppContent: React.FC = () => {
       </div>
 
       {/* Global Modals & Overlays */}
+      <ShopSetupModal />
       <WhatsNewModal />
       <MaintenanceModal />
       <IndependenceOverlay />

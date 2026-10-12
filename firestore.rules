@@ -10,40 +10,56 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Users
+    match /users/{userId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Multi-tenant Shops and all subcollections
+    match /shops/{shopId} {
+      allow read, write: if isSignedIn();
+
+      match /{subCollection=**} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    // Global Staff Directory for quick multi-tenant authentication
+    match /staff_directory/{username} {
+      allow read, write: if isSignedIn();
+    }
+
+    // Root-level collections for backwards compatibility and initial sync
     match /daily_transactions/{txId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     match /back_cash_transactions/{txId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     match /wholesaler_bills/{billId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     match /customer_bills/{billId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     match /easyload_records/{dateId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     match /bottle_items/{itemId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     match /deleted_history/{delId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     match /staff_accounts/{staffId} {
-      allow read, write: if true;
-    }
-
-    match /users/{userId} {
-      allow read, write: if true;
+      allow read, write: if isSignedIn();
     }
 
     match /test/{docId} {

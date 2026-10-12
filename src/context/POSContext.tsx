@@ -9,6 +9,7 @@ import { db, auth, googleProvider, signInWithPopup, signOut } from '../firebase'
 import {
   User,
   UserRole,
+  ShopProfile,
   StaffAccount,
   DailyTransaction,
   BackCashTransaction,
@@ -66,11 +67,15 @@ interface EasyloadSaleSummary {
 }
 
 interface POSContextType {
-  // Auth & Roles
+  // Auth & Roles (Multi-Tenant SaaS)
   currentUser: User | null;
+  currentShop: ShopProfile | null;
+  isNewShopSetupRequired: boolean;
+  completeShopSetup: (shopName: string, phone?: string, address?: string, ownerName?: string) => Promise<boolean>;
+  updateShopProfile: (profile: Partial<ShopProfile>) => Promise<void>;
   login: (username: string, role?: UserRole) => boolean;
   loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
-  loginStaff: (username: string, password: string) => { success: boolean; error?: string };
+  loginStaff: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
 
   // Staff Management
@@ -195,12 +200,22 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [currentShop, setCurrentShop] = useState<ShopProfile | null>(() => {
+    const saved = localStorage.getItem('taj_pos_shop');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [isNewShopSetupRequired, setIsNewShopSetupRequired] = useState<boolean>(false);
+
+  const currentShopId = currentUser?.shopId;
+
   const [isCleanStore, setIsCleanStore] = useState<boolean>(() => {
     return localStorage.getItem('taj_pos_is_clean_store') === 'true';
   });
 
   const [staffAccounts, setStaffAccounts] = useState<StaffAccount[]>(() => {
-    const saved = localStorage.getItem('taj_pos_staff_accounts');
+    const key = currentShopId ? `taj_pos_${currentShopId}_staff_accounts` : 'taj_pos_staff_accounts';
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -323,48 +338,80 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const yesterdayDate = getYesterdayDateString(filterDate);
 
   // Core Data Stores
+  // Helper to persist to Firestore scoped by shop
+  const saveDocToShop = async (collectionName: string, docId: string, data: any) => {
+    if (!currentShopId) return;
+    try {
+      await setDoc(doc(db, 'shops', currentShopId, collectionName, docId), {
+        ...data,
+        shop_id: currentShopId
+      }, { merge: true });
+    } catch (err) {
+      console.warn(`Firestore save error on ${collectionName}:`, err);
+    }
+  };
+
+  const deleteDocFromShop = async (collectionName: string, docId: string) => {
+    if (!currentShopId) return;
+    try {
+      await deleteDoc(doc(db, 'shops', currentShopId, collectionName, docId));
+    } catch (err) {
+      console.warn(`Firestore delete error on ${collectionName}:`, err);
+    }
+  };
+
+  // Core Data Stores - Multi-tenant isolated per shop
   const [dailyTransactions, setDailyTransactions] = useState<DailyTransaction[]>(() => {
-    const saved = localStorage.getItem('taj_pos_daily_tx');
-    return saved ? JSON.parse(saved) : initialDailyTransactions;
+    if (!currentShopId) return [];
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_daily_tx`);
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [backCashTransactions, setBackCashTransactions] = useState<BackCashTransaction[]>(() => {
-    const saved = localStorage.getItem('taj_pos_back_tx');
-    return saved ? JSON.parse(saved) : initialBackCashTransactions;
+    if (!currentShopId) return [];
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_back_tx`);
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [wholesalers, setWholesalers] = useState<WholesalerBill[]>(() => {
-    const saved = localStorage.getItem('taj_pos_wholesalers');
-    return saved ? JSON.parse(saved) : initialWholesalers;
+    if (!currentShopId) return [];
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_wholesalers`);
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [customers, setCustomers] = useState<CustomerBill[]>(() => {
-    const saved = localStorage.getItem('taj_pos_customers');
-    return saved ? JSON.parse(saved) : initialCustomers;
+    if (!currentShopId) return [];
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_customers`);
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [easyloadRecords, setEasyloadRecords] = useState<Record<string, EasyloadRecord>>(() => {
-    const saved = localStorage.getItem('taj_pos_easyload');
-    return saved ? JSON.parse(saved) : initialEasyloadRecords;
+    if (!currentShopId) return {};
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_easyload`);
+    return saved ? JSON.parse(saved) : {};
   });
 
   const [bottleItems, setBottleItems] = useState<BottleItem[]>(() => {
-    const saved = localStorage.getItem('taj_pos_bottles');
-    return saved ? JSON.parse(saved) : initialBottleItems;
+    if (!currentShopId) return [];
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_bottles`);
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [stockTransactions, setStockTransactions] = useState<StockTransaction[]>(() => {
-    const saved = localStorage.getItem('taj_pos_stock_tx');
-    return saved ? JSON.parse(saved) : initialStockTransactions;
+    if (!currentShopId) return [];
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_stock_tx`);
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [editHistory, setEditHistory] = useState<EditHistoryRecord[]>(() => {
-    const saved = localStorage.getItem('taj_pos_edit_history');
+    if (!currentShopId) return [];
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_edit_history`);
     return saved ? JSON.parse(saved) : [];
   });
 
   const [deletedHistory, setDeletedHistory] = useState<DeletedHistoryRecord[]>(() => {
-    const saved = localStorage.getItem('taj_pos_deleted_history');
+    if (!currentShopId) return [];
+    const saved = localStorage.getItem(`taj_pos_${currentShopId}_deleted_history`);
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -381,72 +428,224 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_daily_tx', JSON.stringify(dailyTransactions));
-  }, [dailyTransactions]);
+    if (currentShop) {
+      localStorage.setItem('taj_pos_shop', JSON.stringify(currentShop));
+      if (currentShopId) {
+        localStorage.setItem(`taj_pos_shop_${currentShopId}`, JSON.stringify(currentShop));
+      }
+    } else {
+      localStorage.removeItem('taj_pos_shop');
+    }
+  }, [currentShop, currentShopId]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_back_tx', JSON.stringify(backCashTransactions));
-  }, [backCashTransactions]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_daily_tx`, JSON.stringify(dailyTransactions));
+    }
+  }, [dailyTransactions, currentShopId]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_wholesalers', JSON.stringify(wholesalers));
-  }, [wholesalers]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_back_tx`, JSON.stringify(backCashTransactions));
+    }
+  }, [backCashTransactions, currentShopId]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_customers', JSON.stringify(customers));
-  }, [customers]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_wholesalers`, JSON.stringify(wholesalers));
+    }
+  }, [wholesalers, currentShopId]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_easyload', JSON.stringify(easyloadRecords));
-  }, [easyloadRecords]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_customers`, JSON.stringify(customers));
+    }
+  }, [customers, currentShopId]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_bottles', JSON.stringify(bottleItems));
-  }, [bottleItems]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_easyload`, JSON.stringify(easyloadRecords));
+    }
+  }, [easyloadRecords, currentShopId]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_stock_tx', JSON.stringify(stockTransactions));
-  }, [stockTransactions]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_bottles`, JSON.stringify(bottleItems));
+    }
+  }, [bottleItems, currentShopId]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_edit_history', JSON.stringify(editHistory));
-  }, [editHistory]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_stock_tx`, JSON.stringify(stockTransactions));
+    }
+  }, [stockTransactions, currentShopId]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_deleted_history', JSON.stringify(deletedHistory));
-  }, [deletedHistory]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_edit_history`, JSON.stringify(editHistory));
+    }
+  }, [editHistory, currentShopId]);
+
+  useEffect(() => {
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_deleted_history`, JSON.stringify(deletedHistory));
+    }
+  }, [deletedHistory, currentShopId]);
 
   useEffect(() => {
     localStorage.setItem('taj_pos_settings', JSON.stringify(systemSettings));
   }, [systemSettings]);
 
   useEffect(() => {
-    localStorage.setItem('taj_pos_staff_accounts', JSON.stringify(staffAccounts));
-  }, [staffAccounts]);
+    if (currentShopId) {
+      localStorage.setItem(`taj_pos_${currentShopId}_staff_accounts`, JSON.stringify(staffAccounts));
+    }
+  }, [staffAccounts, currentShopId]);
 
+  // Real-time Firestore Listeners for currentShopId
   useEffect(() => {
+    if (!currentShopId) return;
+
+    const unsubs: (() => void)[] = [];
+
+    // Shop document listener
     try {
-      const unsub = onSnapshot(collection(db, 'staff_accounts'), snapshot => {
-        const list: StaffAccount[] = [];
-        snapshot.forEach(docSnap => {
-          list.push(docSnap.data() as StaffAccount);
+      const unsubShop = onSnapshot(doc(db, 'shops', currentShopId), docSnap => {
+        if (docSnap.exists()) {
+          const sData = docSnap.data() as ShopProfile;
+          setCurrentShop(sData);
+        }
+      });
+      unsubs.push(unsubShop);
+    } catch {}
+
+    // Daily Transactions
+    try {
+      const unsubTx = onSnapshot(collection(db, 'shops', currentShopId, 'daily_transactions'), snapshot => {
+        const list: DailyTransaction[] = [];
+        snapshot.forEach(d => list.push(d.data() as DailyTransaction));
+        if (!snapshot.empty || list.length > 0) {
+          setDailyTransactions(list);
+        }
+      });
+      unsubs.push(unsubTx);
+    } catch {}
+
+    // Back Cash
+    try {
+      const unsubBack = onSnapshot(collection(db, 'shops', currentShopId, 'back_cash_transactions'), snapshot => {
+        const list: BackCashTransaction[] = [];
+        snapshot.forEach(d => list.push(d.data() as BackCashTransaction));
+        if (!snapshot.empty || list.length > 0) {
+          setBackCashTransactions(list);
+        }
+      });
+      unsubs.push(unsubBack);
+    } catch {}
+
+    // Wholesalers
+    try {
+      const unsubW = onSnapshot(collection(db, 'shops', currentShopId, 'wholesaler_bills'), snapshot => {
+        const list: WholesalerBill[] = [];
+        snapshot.forEach(d => list.push(d.data() as WholesalerBill));
+        if (!snapshot.empty || list.length > 0) {
+          setWholesalers(list);
+        }
+      });
+      unsubs.push(unsubW);
+    } catch {}
+
+    // Customers
+    try {
+      const unsubC = onSnapshot(collection(db, 'shops', currentShopId, 'customer_bills'), snapshot => {
+        const list: CustomerBill[] = [];
+        snapshot.forEach(d => list.push(d.data() as CustomerBill));
+        if (!snapshot.empty || list.length > 0) {
+          setCustomers(list);
+        }
+      });
+      unsubs.push(unsubC);
+    } catch {}
+
+    // Easyload Records
+    try {
+      const unsubLoad = onSnapshot(collection(db, 'shops', currentShopId, 'easyload_records'), snapshot => {
+        const map: Record<string, EasyloadRecord> = {};
+        snapshot.forEach(d => {
+          const item = d.data() as EasyloadRecord;
+          if (item.date_recorded) {
+            map[item.date_recorded] = item;
+          }
         });
-        if (list.length > 0) {
+        if (!snapshot.empty) {
+          setEasyloadRecords(map);
+        }
+      });
+      unsubs.push(unsubLoad);
+    } catch {}
+
+    // Bottle Items
+    try {
+      const unsubBottles = onSnapshot(collection(db, 'shops', currentShopId, 'bottle_items'), snapshot => {
+        const list: BottleItem[] = [];
+        snapshot.forEach(d => list.push(d.data() as BottleItem));
+        if (!snapshot.empty || list.length > 0) {
+          setBottleItems(list);
+        }
+      });
+      unsubs.push(unsubBottles);
+    } catch {}
+
+    // Stock Transactions
+    try {
+      const unsubStock = onSnapshot(collection(db, 'shops', currentShopId, 'stock_transactions'), snapshot => {
+        const list: StockTransaction[] = [];
+        snapshot.forEach(d => list.push(d.data() as StockTransaction));
+        if (!snapshot.empty || list.length > 0) {
+          setStockTransactions(list);
+        }
+      });
+      unsubs.push(unsubStock);
+    } catch {}
+
+    // Staff Accounts
+    try {
+      const unsubStaff = onSnapshot(collection(db, 'shops', currentShopId, 'staff_accounts'), snapshot => {
+        const list: StaffAccount[] = [];
+        snapshot.forEach(d => list.push(d.data() as StaffAccount));
+        if (!snapshot.empty || list.length > 0) {
           setStaffAccounts(list);
         }
-      }, err => {
-        console.warn('Staff accounts listener note:', err);
       });
-      return () => unsub();
-    } catch (e) {
-      // Offline fallback
-    }
-  }, []);
+      unsubs.push(unsubStaff);
+    } catch {}
 
-  // Auth Functions
+    // Deleted History
+    try {
+      const unsubDel = onSnapshot(collection(db, 'shops', currentShopId, 'deleted_history'), snapshot => {
+        const list: DeletedHistoryRecord[] = [];
+        snapshot.forEach(d => list.push(d.data() as DeletedHistoryRecord));
+        if (!snapshot.empty || list.length > 0) {
+          setDeletedHistory(list);
+        }
+      });
+      unsubs.push(unsubDel);
+    } catch {}
+
+    return () => {
+      unsubs.forEach(fn => fn());
+    };
+  }, [currentShopId]);
+
+  // Auth Functions (Multi-Tenant SaaS with Real Google Accounts)
   const login = (username: string, role: UserRole = 'user') => {
     const userRole = username.toLowerCase() === 'admin' ? 'admin' : role;
-    const userObj: User = { username, role: userRole };
+    const userObj: User = {
+      username,
+      role: userRole,
+      shopId: currentShopId || 'default',
+      shopName: currentShop?.shop_name || 'My Shop'
+    };
     setCurrentUser(userObj);
     return true;
   };
@@ -455,16 +654,78 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const googleUser = result.user;
-      const userObj: User = {
-        username: googleUser.email?.split('@')[0] || 'Admin',
-        name: googleUser.displayName || 'Shop Owner',
-        email: googleUser.email || undefined,
-        role: 'admin',
-        isGoogleUser: true,
-        photoURL: googleUser.photoURL || undefined
-      };
-      setCurrentUser(userObj);
-      localStorage.setItem('taj_pos_user', JSON.stringify(userObj));
+      const shopId = googleUser.uid;
+
+      // Check if shop exists in Firestore
+      let existingShop: ShopProfile | null = null;
+      try {
+        const shopSnap = await getDocFromServer(doc(db, 'shops', shopId));
+        if (shopSnap.exists()) {
+          existingShop = shopSnap.data() as ShopProfile;
+        }
+      } catch (e) {
+        const localShop = localStorage.getItem(`taj_pos_shop_${shopId}`);
+        if (localShop) existingShop = JSON.parse(localShop);
+      }
+
+      if (existingShop) {
+        setCurrentShop(existingShop);
+        setIsNewShopSetupRequired(false);
+        const userObj: User = {
+          username: googleUser.email?.split('@')[0] || 'Admin',
+          name: googleUser.displayName || existingShop.owner_name || 'Shop Owner',
+          email: googleUser.email || undefined,
+          role: 'admin',
+          isGoogleUser: true,
+          photoURL: googleUser.photoURL || undefined,
+          shopId: shopId,
+          shopName: existingShop.shop_name
+        };
+        setCurrentUser(userObj);
+        localStorage.setItem('taj_pos_user', JSON.stringify(userObj));
+        localStorage.setItem('taj_pos_shop', JSON.stringify(existingShop));
+        localStorage.setItem(`taj_pos_shop_${shopId}`, JSON.stringify(existingShop));
+      } else {
+        // Brand new shopkeeper account!
+        const initialShop: ShopProfile = {
+          id: shopId,
+          shop_name: 'Meri Dukaan (Shop)',
+          owner_name: googleUser.displayName || 'Shop Owner',
+          owner_email: googleUser.email || '',
+          owner_uid: shopId,
+          phone: '',
+          address: '',
+          created_at: new Date().toISOString()
+        };
+        setCurrentShop(initialShop);
+        setIsNewShopSetupRequired(true);
+
+        const userObj: User = {
+          username: googleUser.email?.split('@')[0] || 'Admin',
+          name: googleUser.displayName || 'Shop Owner',
+          email: googleUser.email || undefined,
+          role: 'admin',
+          isGoogleUser: true,
+          photoURL: googleUser.photoURL || undefined,
+          shopId: shopId,
+          shopName: initialShop.shop_name
+        };
+        setCurrentUser(userObj);
+        localStorage.setItem('taj_pos_user', JSON.stringify(userObj));
+
+        // Start completely clean 0 records
+        setDailyTransactions([]);
+        setBackCashTransactions([]);
+        setWholesalers([]);
+        setCustomers([]);
+        setEasyloadRecords({});
+        setBottleItems([]);
+        setStockTransactions([]);
+        setStaffAccounts([]);
+        setEditHistory([]);
+        setDeletedHistory([]);
+        setIsCleanStore(true);
+      }
 
       // Sync admin user profile to Firestore
       setDoc(doc(db, 'users', googleUser.uid), {
@@ -472,35 +733,134 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         email: googleUser.email,
         displayName: googleUser.displayName,
         role: 'admin',
+        shopId: shopId,
         lastLogin: new Date().toISOString()
       }, { merge: true }).catch(() => {});
 
       return { success: true };
     } catch (err: any) {
       console.error('Google login error:', err);
-      return { success: false, error: err.message || 'Google Login failed' };
+      return { success: false, error: err.message || 'Google Login fail ho gaya. Barahe karam dobara koshish karein.' };
     }
   };
 
-  const loginStaff = (username: string, password: string): { success: boolean; error?: string } => {
+  const completeShopSetup = async (
+    shopName: string,
+    phone?: string,
+    address?: string,
+    ownerName?: string
+  ): Promise<boolean> => {
+    if (!currentUser?.shopId) return false;
+    const shopId = currentUser.shopId;
+    const newProfile: ShopProfile = {
+      id: shopId,
+      shop_name: shopName,
+      owner_name: ownerName || currentUser.name || 'Shopkeeper',
+      owner_email: currentUser.email || '',
+      owner_uid: shopId,
+      phone: phone || '',
+      address: address || '',
+      created_at: new Date().toISOString()
+    };
+
+    setCurrentShop(newProfile);
+    setIsNewShopSetupRequired(false);
+
+    const updatedUser: User = {
+      ...currentUser,
+      shopName: shopName,
+      name: ownerName || currentUser.name
+    };
+    setCurrentUser(updatedUser);
+    localStorage.setItem('taj_pos_user', JSON.stringify(updatedUser));
+    localStorage.setItem('taj_pos_shop', JSON.stringify(newProfile));
+    localStorage.setItem(`taj_pos_shop_${shopId}`, JSON.stringify(newProfile));
+
+    try {
+      await setDoc(doc(db, 'shops', shopId), newProfile, { merge: true });
+    } catch (e) {
+      console.warn('Shop setup Firestore sync note:', e);
+    }
+
+    return true;
+  };
+
+  const updateShopProfile = async (profile: Partial<ShopProfile>): Promise<void> => {
+    if (!currentShopId || !currentShop) return;
+    const updated = { ...currentShop, ...profile };
+    setCurrentShop(updated);
+    if (profile.shop_name && currentUser) {
+      setCurrentUser({ ...currentUser, shopName: profile.shop_name });
+    }
+    localStorage.setItem('taj_pos_shop', JSON.stringify(updated));
+    localStorage.setItem(`taj_pos_shop_${currentShopId}`, JSON.stringify(updated));
+    await setDoc(doc(db, 'shops', currentShopId), updated, { merge: true }).catch(() => {});
+  };
+
+  const loginStaff = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     const cleanUsername = username.trim().toLowerCase();
+
+    // 1. Try global staff_directory in Firestore
+    try {
+      const dirDoc = await getDocFromServer(doc(db, 'staff_directory', cleanUsername));
+      if (dirDoc.exists()) {
+        const staffData = dirDoc.data() as any;
+        if (!staffData.is_active) {
+          return { success: false, error: 'Yeh staff account band (disabled) hai. Malik se rabta karein.' };
+        }
+        if (staffData.password !== password.trim()) {
+          return { success: false, error: 'Ghalat Password! Barahe karam sahi password darj karein.' };
+        }
+
+        const shopId = staffData.shop_id;
+        let shopName = 'Shop';
+        try {
+          const shopSnap = await getDocFromServer(doc(db, 'shops', shopId));
+          if (shopSnap.exists()) {
+            const sData = shopSnap.data() as ShopProfile;
+            shopName = sData.shop_name;
+            setCurrentShop(sData);
+          }
+        } catch {}
+
+        const userObj: User = {
+          username: staffData.username,
+          name: staffData.name,
+          role: staffData.role,
+          isGoogleUser: false,
+          shopId: shopId,
+          shopName: shopName
+        };
+
+        setCurrentUser(userObj);
+        localStorage.setItem('taj_pos_user', JSON.stringify(userObj));
+        return { success: true };
+      }
+    } catch (e) {
+      // Offline fallback: check local staff accounts
+    }
+
+    // 2. Local fallback if offline
     const account = staffAccounts.find(
       acc => acc.username.toLowerCase() === cleanUsername
     );
     if (!account) {
-      return { success: false, error: 'User nahi mila! Barahe karam Admin ki di gayi details darj karein.' };
+      return { success: false, error: 'User nahi mila! Barahe karam Admin ki di gayi sahi details darj karein.' };
     }
     if (!account.is_active) {
-      return { success: false, error: 'Yeh account band (disabled) hai. Admin se rabta karein.' };
+      return { success: false, error: 'Yeh account band (disabled) hai. Malik se rabta karein.' };
     }
-    if (account.password !== password) {
+    if (account.password !== password.trim()) {
       return { success: false, error: 'Ghalat Password! Barahe karam sahi password darj karein.' };
     }
+
     const userObj: User = {
       username: account.username,
       name: account.name,
       role: account.role,
-      isGoogleUser: false
+      isGoogleUser: false,
+      shopId: account.shop_id || currentShopId || 'default',
+      shopName: currentShop?.shop_name || 'Shop'
     };
     setCurrentUser(userObj);
     localStorage.setItem('taj_pos_user', JSON.stringify(userObj));
@@ -510,37 +870,78 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const logout = () => {
     signOut(auth).catch(() => {});
     setCurrentUser(null);
+    setCurrentShop(null);
     localStorage.removeItem('taj_pos_user');
+    localStorage.removeItem('taj_pos_shop');
   };
 
-  // Staff Accounts Management
+  // Staff Accounts Management (Scoped to Shop)
   const addStaffAccount = (accountData: Omit<StaffAccount, 'id' | 'created_at' | 'created_by'>): boolean => {
-    if (staffAccounts.some(a => a.username.toLowerCase() === accountData.username.trim().toLowerCase())) {
+    if (!currentShopId) {
+      alert('Pehle Main Admin Google se login karein!');
+      return false;
+    }
+    const cleanUsername = accountData.username.trim().toLowerCase();
+    if (staffAccounts.some(a => a.username.toLowerCase() === cleanUsername)) {
       alert('Yeh username pehle se mojood hai! Doosra username darj karein.');
       return false;
     }
     const newStaff: StaffAccount = {
       ...accountData,
-      username: accountData.username.trim(),
+      username: cleanUsername,
+      shop_id: currentShopId,
       id: `staff-${Date.now()}`,
       created_at: new Date().toISOString(),
       created_by: currentUser?.email || currentUser?.username || 'Admin',
       is_active: true
     };
     setStaffAccounts(prev => [newStaff, ...prev]);
-    setDoc(doc(db, 'staff_accounts', newStaff.id), newStaff).catch(() => {});
+
+    // Save in shop subcollection
+    saveDocToShop('staff_accounts', newStaff.id, newStaff);
+
+    // Save in global staff_directory for instant login from any browser/device
+    setDoc(doc(db, 'staff_directory', cleanUsername), {
+      username: cleanUsername,
+      password: accountData.password.trim(),
+      shop_id: currentShopId,
+      role: accountData.role,
+      name: accountData.name.trim(),
+      phone: accountData.phone?.trim() || null,
+      is_active: true,
+      created_at: new Date().toISOString(),
+      created_by: currentUser?.email || currentUser?.username || 'Admin'
+    }).catch(() => {});
+
     return true;
   };
 
   const updateStaffAccount = (updated: StaffAccount): boolean => {
     setStaffAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
-    setDoc(doc(db, 'staff_accounts', updated.id), updated).catch(() => {});
+    saveDocToShop('staff_accounts', updated.id, updated);
+    if (updated.username) {
+      const cleanUsername = updated.username.toLowerCase();
+      setDoc(doc(db, 'staff_directory', cleanUsername), {
+        username: cleanUsername,
+        password: updated.password.trim(),
+        shop_id: updated.shop_id || currentShopId,
+        role: updated.role,
+        name: updated.name.trim(),
+        phone: updated.phone?.trim() || null,
+        is_active: updated.is_active,
+        updated_at: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
+    }
     return true;
   };
 
   const deleteStaffAccount = (id: string) => {
+    const staff = staffAccounts.find(s => s.id === id);
     setStaffAccounts(prev => prev.filter(a => a.id !== id));
-    deleteDoc(doc(db, 'staff_accounts', id)).catch(() => {});
+    deleteDocFromShop('staff_accounts', id);
+    if (staff?.username) {
+      deleteDoc(doc(db, 'staff_directory', staff.username.toLowerCase())).catch(() => {});
+    }
   };
 
   // Clean Zero Store vs Demo Store
@@ -709,6 +1110,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       created_by: currentUser?.role || 'user'
     };
     setDailyTransactions(prev => [newTx, ...prev]);
+    saveDocToShop('daily_transactions', newTx.id, newTx);
   };
 
   const updateDailyTransaction = (id: string, newAmount: number, newDesc: string, newType?: string) => {
@@ -730,13 +1132,16 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               transaction_date: tx.transaction_date
             };
             setEditHistory(h => [log, ...h]);
+            saveDocToShop('edit_history', log.id, log);
           }
-          return {
+          const updated = {
             ...tx,
             amount: newAmount,
             description: newDesc,
             type: (newType as any) || tx.type
           };
+          saveDocToShop('daily_transactions', updated.id, updated);
+          return updated;
         }
         return tx;
       })
@@ -762,23 +1167,39 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       party_type: tx.party_type
     };
     setDeletedHistory(prev => [delRecord, ...prev]);
+    saveDocToShop('deleted_history', delRecord.id, delRecord);
 
     // Reverse if party transaction
     if (tx.party_type === 'wholesaler' && tx.bill_id) {
       if (tx.type === 'out') {
         setWholesalers(prev =>
-          prev.map(w => (w.id === tx.bill_id ? { ...w, remaining_balance: w.remaining_balance + tx.amount, status: 'pending' } : w))
+          prev.map(w => {
+            if (w.id === tx.bill_id) {
+              const updated = { ...w, remaining_balance: w.remaining_balance + tx.amount, status: 'pending' as const };
+              saveDocToShop('wholesaler_bills', updated.id, updated);
+              return updated;
+            }
+            return w;
+          })
         );
       }
     } else if (tx.party_type === 'customer' && tx.bill_id) {
       if (tx.type === 'in') {
         setCustomers(prev =>
-          prev.map(c => (c.id === tx.bill_id ? { ...c, remaining_balance: c.remaining_balance + tx.amount, status: 'pending' } : c))
+          prev.map(c => {
+            if (c.id === tx.bill_id) {
+              const updated = { ...c, remaining_balance: c.remaining_balance + tx.amount, status: 'pending' as const };
+              saveDocToShop('customer_bills', updated.id, updated);
+              return updated;
+            }
+            return c;
+          })
         );
       }
     }
 
     setDailyTransactions(prev => prev.filter(t => t.id !== id));
+    deleteDocFromShop('daily_transactions', id);
   };
 
   // Back Cash
@@ -789,6 +1210,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       created_by: currentUser?.role || 'user'
     };
     setBackCashTransactions(prev => [newTx, ...prev]);
+    saveDocToShop('back_cash_transactions', newTx.id, newTx);
   };
 
   const updateBackCash = (id: string, newAmount: number, newNote: string, newType?: 'receiving' | 'out') => {
@@ -809,13 +1231,16 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
               transaction_date: tx.transaction_date
             };
             setEditHistory(h => [log, ...h]);
+            saveDocToShop('edit_history', log.id, log);
           }
-          return {
+          const updated = {
             ...tx,
             amount: newAmount,
             note: newNote,
             type: newType || tx.type
           };
+          saveDocToShop('back_cash_transactions', updated.id, updated);
+          return updated;
         }
         return tx;
       })
@@ -838,7 +1263,9 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deleted_at: new Date().toISOString()
     };
     setDeletedHistory(prev => [delRecord, ...prev]);
+    saveDocToShop('deleted_history', delRecord.id, delRecord);
     setBackCashTransactions(prev => prev.filter(t => t.id !== id));
+    deleteDocFromShop('back_cash_transactions', id);
   };
 
   // Wholesalers Khata
@@ -851,6 +1278,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       status: 'pending'
     };
     setWholesalers(prev => [newBill, ...prev]);
+    saveDocToShop('wholesaler_bills', newBill.id, newBill);
   };
 
   const payWholesaler = (billId: string, amount: number) => {
@@ -861,7 +1289,14 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const newStatus = newRem <= 0 ? 'paid' : 'pending';
 
     setWholesalers(prev =>
-      prev.map(w => (w.id === billId ? { ...w, remaining_balance: newRem, status: newStatus } : w))
+      prev.map(w => {
+        if (w.id === billId) {
+          const upd = { ...w, remaining_balance: newRem, status: newStatus as any };
+          saveDocToShop('wholesaler_bills', upd.id, upd);
+          return upd;
+        }
+        return w;
+      })
     );
 
     // Record in Daily Transactions (Cash Out from Shop)
@@ -880,16 +1315,19 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!target || amount <= 0) return;
 
     setWholesalers(prev =>
-      prev.map(w =>
-        w.id === billId
-          ? {
-              ...w,
-              total_bill: w.total_bill + amount,
-              remaining_balance: w.remaining_balance + amount,
-              status: 'pending'
-            }
-          : w
-      )
+      prev.map(w => {
+        if (w.id === billId) {
+          const upd = {
+            ...w,
+            total_bill: w.total_bill + amount,
+            remaining_balance: w.remaining_balance + amount,
+            status: 'pending' as const
+          };
+          saveDocToShop('wholesaler_bills', upd.id, upd);
+          return upd;
+        }
+        return w;
+      })
     );
 
     addDailyTransaction({
@@ -904,10 +1342,12 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateWholesaler = (bill: WholesalerBill) => {
     setWholesalers(prev => prev.map(w => (w.id === bill.id ? bill : w)));
+    saveDocToShop('wholesaler_bills', bill.id, bill);
   };
 
   const deleteWholesaler = (id: string) => {
     setWholesalers(prev => prev.filter(w => w.id !== id));
+    deleteDocFromShop('wholesaler_bills', id);
   };
 
   // Customers Khata (Udhaar)
@@ -920,6 +1360,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       status: 'pending'
     };
     setCustomers(prev => [newBill, ...prev]);
+    saveDocToShop('customer_bills', newBill.id, newBill);
 
     // Record in daily cash that money was given on udhaar (Out)
     addDailyTransaction({
@@ -940,7 +1381,14 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const newStatus = newRem <= 0 ? 'paid' : 'pending';
 
     setCustomers(prev =>
-      prev.map(c => (c.id === billId ? { ...c, remaining_balance: newRem, status: newStatus } : c))
+      prev.map(c => {
+        if (c.id === billId) {
+          const upd = { ...c, remaining_balance: newRem, status: newStatus as any };
+          saveDocToShop('customer_bills', upd.id, upd);
+          return upd;
+        }
+        return c;
+      })
     );
 
     // Record Cash In in Daily Cash
@@ -959,16 +1407,19 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!target || amount <= 0) return;
 
     setCustomers(prev =>
-      prev.map(c =>
-        c.id === billId
-          ? {
-              ...c,
-              total_bill: c.total_bill + amount,
-              remaining_balance: c.remaining_balance + amount,
-              status: 'pending'
-            }
-          : c
-      )
+      prev.map(c => {
+        if (c.id === billId) {
+          const upd = {
+            ...c,
+            total_bill: c.total_bill + amount,
+            remaining_balance: c.remaining_balance + amount,
+            status: 'pending' as const
+          };
+          saveDocToShop('customer_bills', upd.id, upd);
+          return upd;
+        }
+        return c;
+      })
     );
 
     addDailyTransaction({
@@ -983,10 +1434,12 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateCustomer = (bill: CustomerBill) => {
     setCustomers(prev => prev.map(c => (c.id === bill.id ? bill : c)));
+    saveDocToShop('customer_bills', bill.id, bill);
   };
 
   const deleteCustomer = (id: string) => {
     setCustomers(prev => prev.filter(c => c.id !== id));
+    deleteDocFromShop('customer_bills', id);
   };
 
   // Easyload Ledger
@@ -1008,12 +1461,14 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ufone_closing: 0,
         total_commission_earned: 0
       };
+      const merged = {
+        ...existing,
+        ...updates
+      };
+      saveDocToShop('easyload_records', dateStr, merged);
       return {
         ...prev,
-        [dateStr]: {
-          ...existing,
-          ...updates
-        }
+        [dateStr]: merged
       };
     });
   };
@@ -1078,6 +1533,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       total_stock: 0
     };
     setBottleItems(prev => [...prev, newItem]);
+    saveDocToShop('bottle_items', newItem.id, newItem);
     return true;
   };
 
@@ -1086,11 +1542,13 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (dup) return false;
 
     setBottleItems(prev => prev.map(b => (b.id === item.id ? item : b)));
+    saveDocToShop('bottle_items', item.id, item);
     return true;
   };
 
   const deleteBottleItem = (id: string) => {
     setBottleItems(prev => prev.filter(b => b.id !== id));
+    deleteDocFromShop('bottle_items', id);
   };
 
   const updateItemStock = (itemId: string, qty: number, type: 'add' | 'remove', note?: string) => {
@@ -1103,9 +1561,11 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const newStock = type === 'add' ? item.total_stock + qty : item.total_stock - qty;
 
+    const updatedItem = { ...item, total_stock: newStock };
     setBottleItems(prev =>
-      prev.map(b => (b.id === itemId ? { ...b, total_stock: newStock } : b))
+      prev.map(b => (b.id === itemId ? updatedItem : b))
     );
+    saveDocToShop('bottle_items', itemId, updatedItem);
 
     // Record Stock transaction
     const newTx: StockTransaction = {
@@ -1119,6 +1579,7 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       created_at: new Date().toISOString()
     };
     setStockTransactions(prev => [newTx, ...prev]);
+    saveDocToShop('stock_transactions', newTx.id, newTx);
     return true;
   };
 
@@ -1146,10 +1607,12 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
 
     setDeletedHistory(prev => prev.filter(d => d.id !== id));
+    deleteDocFromShop('deleted_history', id);
   };
 
   const permanentDeleteEntry = (id: string) => {
     setDeletedHistory(prev => prev.filter(d => d.id !== id));
+    deleteDocFromShop('deleted_history', id);
   };
 
   const markAllEditsAsRead = () => {
@@ -1260,6 +1723,10 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     <POSContext.Provider
       value={{
         currentUser,
+        currentShop,
+        isNewShopSetupRequired,
+        completeShopSetup,
+        updateShopProfile,
         login,
         loginWithGoogle,
         loginStaff,

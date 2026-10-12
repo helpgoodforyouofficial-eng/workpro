@@ -1,11 +1,45 @@
 {
   "entities": {
+    "ShopProfile": {
+      "title": "Shop Profile",
+      "description": "Multi-tenant shop profile owned by a verified shopkeeper",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shop_name": { "type": "string", "maxLength": 200 },
+        "owner_name": { "type": "string", "maxLength": 100 },
+        "owner_email": { "type": "string", "maxLength": 150 },
+        "owner_uid": { "type": "string" },
+        "phone": { "type": "string", "maxLength": 50 },
+        "address": { "type": "string", "maxLength": 300 },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "shop_name", "owner_name", "owner_email", "owner_uid", "created_at"]
+    },
+    "StaffDirectory": {
+      "title": "Staff Directory",
+      "description": "Global index for staff credentials linking to tenant shop",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string", "maxLength": 50 },
+        "password": { "type": "string", "maxLength": 100 },
+        "shop_id": { "type": "string" },
+        "role": { "type": "string", "enum": ["manager", "cashier", "salesman"] },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "is_active": { "type": "boolean" },
+        "created_at": { "type": "string" },
+        "created_by": { "type": "string" }
+      },
+      "required": ["username", "password", "shop_id", "role", "name", "is_active"]
+    },
     "DailyTransaction": {
       "title": "Daily Transaction",
       "description": "Daily shop cash flow record (cash in, cash out, counter bills, etc.)",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "shop_id": { "type": "string" },
         "type": { "type": "string", "enum": ["opening", "in", "out", "bill_add", "payment"] },
         "amount": { "type": "number" },
         "description": { "type": "string", "maxLength": 500 },
@@ -23,6 +57,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "shop_id": { "type": "string" },
         "type": { "type": "string", "enum": ["receiving", "out"] },
         "amount": { "type": "number" },
         "note": { "type": "string", "maxLength": 500 },
@@ -38,15 +73,16 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "supplier_name": { "type": "string", "maxLength": 200 },
-        "phone": { "type": "string", "maxLength": 50 },
-        "total_amount": { "type": "number" },
-        "paid_amount": { "type": "number" },
+        "shop_id": { "type": "string" },
+        "customer_name": { "type": "string", "maxLength": 200 },
+        "phone_number": { "type": "string", "maxLength": 50 },
+        "total_bill": { "type": "number" },
         "remaining_balance": { "type": "number" },
         "created_date": { "type": "string" },
-        "status": { "type": "string", "enum": ["paid", "pending", "overdue"] }
+        "status": { "type": "string", "enum": ["paid", "pending"] },
+        "invoice_number": { "type": "string" }
       },
-      "required": ["id", "supplier_name", "total_amount", "paid_amount", "remaining_balance", "created_date", "status"]
+      "required": ["id", "customer_name", "total_bill", "remaining_balance", "created_date", "status"]
     },
     "CustomerBill": {
       "title": "Customer Bill",
@@ -54,55 +90,73 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "shop_id": { "type": "string" },
         "customer_name": { "type": "string", "maxLength": 200 },
-        "phone": { "type": "string", "maxLength": 50 },
-        "total_amount": { "type": "number" },
-        "paid_amount": { "type": "number" },
+        "phone_number": { "type": "string", "maxLength": 50 },
+        "total_bill": { "type": "number" },
         "remaining_balance": { "type": "number" },
         "created_date": { "type": "string" },
-        "status": { "type": "string", "enum": ["paid", "pending", "overdue"] }
+        "status": { "type": "string", "enum": ["paid", "pending"] },
+        "invoice_number": { "type": "string" },
+        "address": { "type": "string" }
       },
-      "required": ["id", "customer_name", "total_amount", "paid_amount", "remaining_balance", "created_date", "status"]
+      "required": ["id", "customer_name", "total_bill", "remaining_balance", "created_date", "status"]
     },
     "EasyloadRecord": {
       "title": "Easyload Record",
       "description": "Daily mobile easyload sale & balance tracker per network",
       "type": "object",
       "properties": {
-        "date": { "type": "string" },
-        "jazz_open": { "type": "number" },
+        "date_recorded": { "type": "string" },
+        "shop_id": { "type": "string" },
+        "jazz_opening": { "type": "number" },
         "jazz_purchase": { "type": "number" },
-        "jazz_close": { "type": "number" },
-        "telenor_open": { "type": "number" },
+        "jazz_closing": { "type": "number" },
+        "telenor_opening": { "type": "number" },
         "telenor_purchase": { "type": "number" },
-        "telenor_close": { "type": "number" },
-        "zong_open": { "type": "number" },
+        "telenor_closing": { "type": "number" },
+        "zong_opening": { "type": "number" },
         "zong_purchase": { "type": "number" },
-        "zong_close": { "type": "number" },
-        "ufone_open": { "type": "number" },
+        "zong_closing": { "type": "number" },
+        "ufone_opening": { "type": "number" },
         "ufone_purchase": { "type": "number" },
-        "ufone_close": { "type": "number" },
-        "purchases": { "type": "array" }
+        "ufone_closing": { "type": "number" },
+        "total_commission_earned": { "type": "number" }
       },
-      "required": ["date"]
+      "required": ["date_recorded"]
     },
     "BottleItem": {
       "title": "Bottle Item",
-      "description": "Stock inventory item with crate/pet counts and purchase/sale prices",
+      "description": "Stock inventory item with purchase/sale prices and commission",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "name": { "type": "string", "maxLength": 200 },
+        "shop_id": { "type": "string" },
+        "item_name": { "type": "string", "maxLength": 200 },
         "category": { "type": "string" },
         "total_stock": { "type": "number" },
-        "bottles_per_pet": { "type": "number" },
-        "empty_stock": { "type": "number" },
-        "purchase_price": { "type": "number" },
-        "sale_price": { "type": "number" },
-        "pet_purchase_price": { "type": "number" },
-        "pet_sale_price": { "type": "number" }
+        "unit_price": { "type": "number" },
+        "commission_per_unit": { "type": "number" },
+        "salesman_price": { "type": "number" }
       },
-      "required": ["id", "name", "total_stock", "purchase_price", "sale_price"]
+      "required": ["id", "item_name", "total_stock", "unit_price"]
+    },
+    "StockTransaction": {
+      "title": "Stock Transaction",
+      "description": "Stock movement transaction log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shop_id": { "type": "string" },
+        "item_id": { "type": "string" },
+        "item_name": { "type": "string" },
+        "user_name": { "type": "string" },
+        "action_type": { "type": "string", "enum": ["add", "remove", "reverse"] },
+        "quantity": { "type": "number" },
+        "note": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["id", "item_id", "quantity", "action_type", "created_at"]
     },
     "DeletedHistoryRecord": {
       "title": "Deleted History Record",
@@ -110,6 +164,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "shop_id": { "type": "string" },
         "original_id": { "type": "string" },
         "source": { "type": "string" },
         "type": { "type": "string" },
@@ -120,40 +175,74 @@
         "deleted_at": { "type": "string" }
       },
       "required": ["id", "original_id", "source", "amount", "deleted_by", "deleted_at"]
+    },
+    "StaffAccount": {
+      "title": "Staff Account",
+      "description": "Staff member login accounts created by Admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "shop_id": { "type": "string" },
+        "username": { "type": "string", "maxLength": 50 },
+        "password": { "type": "string", "maxLength": 100 },
+        "name": { "type": "string", "maxLength": 100 },
+        "role": { "type": "string", "enum": ["admin", "manager", "cashier", "salesman", "user"] },
+        "phone": { "type": "string", "maxLength": 50 },
+        "created_at": { "type": "string" },
+        "created_by": { "type": "string" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["id", "username", "password", "name", "role", "is_active"]
     }
   },
   "firestore": {
-    "/daily_transactions/{txId}": {
+    "/shops/{shopId}": {
+      "schema": "ShopProfile",
+      "description": "Multi-tenant shop profile"
+    },
+    "/shops/{shopId}/daily_transactions/{txId}": {
       "schema": "DailyTransaction",
-      "description": "All shop cash book transactions"
+      "description": "Tenant shop cash book transactions"
     },
-    "/back_cash_transactions/{txId}": {
+    "/shops/{shopId}/back_cash_transactions/{txId}": {
       "schema": "BackCashTransaction",
-      "description": "All back cash transactions"
+      "description": "Tenant back cash transactions"
     },
-    "/wholesaler_bills/{billId}": {
+    "/shops/{shopId}/wholesaler_bills/{billId}": {
       "schema": "WholesalerBill",
-      "description": "Supplier credit and ledger bills"
+      "description": "Tenant supplier credit and ledger bills"
     },
-    "/customer_bills/{billId}": {
+    "/shops/{shopId}/customer_bills/{billId}": {
       "schema": "CustomerBill",
-      "description": "Customer khata credit accounts"
+      "description": "Tenant customer khata credit accounts"
     },
-    "/easyload_records/{dateId}": {
+    "/shops/{shopId}/easyload_records/{dateId}": {
       "schema": "EasyloadRecord",
-      "description": "Daily mobile easyload sale & balance per network"
+      "description": "Tenant daily mobile easyload sale & balance per network"
     },
-    "/bottle_items/{itemId}": {
+    "/shops/{shopId}/bottle_items/{itemId}": {
       "schema": "BottleItem",
-      "description": "Inventory and stock products"
+      "description": "Tenant inventory and stock products"
     },
-    "/deleted_history/{delId}": {
+    "/shops/{shopId}/stock_transactions/{txId}": {
+      "schema": "StockTransaction",
+      "description": "Tenant stock transaction logs"
+    },
+    "/shops/{shopId}/deleted_history/{delId}": {
       "schema": "DeletedHistoryRecord",
-      "description": "Audit logs for deleted items"
+      "description": "Tenant audit logs for deleted items"
     },
-    "/staff_accounts/{staffId}": {
+    "/shops/{shopId}/staff_accounts/{staffId}": {
       "schema": "StaffAccount",
-      "description": "Staff member login accounts created by Admin"
+      "description": "Tenant staff member accounts"
+    },
+    "/staff_directory/{username}": {
+      "schema": "StaffDirectory",
+      "description": "Global index for staff authentication"
+    },
+    "/users/{userId}": {
+      "schema": "ShopProfile",
+      "description": "User profile document"
     }
   }
 }

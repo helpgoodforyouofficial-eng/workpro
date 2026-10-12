@@ -41,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     activeView,
     setActiveView,
     currentUser,
+    currentShop,
     logout,
     setShowWhatsNewModal,
     setShowIndependenceModal,
@@ -129,23 +130,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       >
         {/* Header Branding */}
         <div className="p-4 bg-[#0d1b2a] border-b border-slate-700/60 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <TajLogo size="sm" showSubtitle={false} />
-            <div>
-              <h1 className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5">
-                <span>Taj POS Pro</span>
-                <span className="text-[10px] px-1.5 py-0.2 bg-emerald-600 text-white rounded font-mono font-bold">
+            <div className="min-w-0">
+              <h1 className="font-bold text-sm tracking-tight text-white flex items-center gap-1.5 truncate">
+                <span className="truncate">{currentShop?.shop_name || currentUser?.shopName || 'Taj POS Pro'}</span>
+                <span className="text-[10px] px-1.5 py-0.2 bg-emerald-600 text-white rounded font-mono font-bold shrink-0">
                   v15.8.2
                 </span>
               </h1>
-              <p className="text-[10px] text-amber-300 font-urdu">تاج کریانہ اینڈ موبائل شاپ</p>
+              <p className="text-[10px] text-amber-300 font-urdu truncate">
+                {currentShop?.owner_name ? `مالک: ${currentShop.owner_name}` : 'تاج کریانہ اینڈ موبائل شاپ'}
+              </p>
             </div>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+            className="md:hidden p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 shrink-0"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -153,17 +156,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* User Card */}
         <div className="px-4 py-3 bg-[#162235] border-b border-slate-700/40 flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center font-bold text-slate-200 uppercase">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-full bg-blue-600/30 border border-blue-400/40 flex items-center justify-center font-bold text-blue-200 uppercase shrink-0">
               {currentUser?.username.charAt(0)}
             </div>
-            <div>
-              <div className="font-semibold text-slate-200">{currentUser?.username}</div>
-              <div className="text-[10px] text-slate-400 capitalize">{currentUser?.role || 'Admin'}</div>
+            <div className="min-w-0">
+              <div className="font-semibold text-slate-200 truncate">{currentUser?.name || currentUser?.username}</div>
+              <div className="text-[10px] text-slate-400 truncate">
+                {currentUser?.email ? currentUser.email : `@${currentUser?.username}`}
+              </div>
             </div>
           </div>
           <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+            className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase shrink-0 ${
               userRole === 'admin'
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                 : userRole === 'manager'

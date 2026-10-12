@@ -5,6 +5,17 @@
 
 export type UserRole = 'admin' | 'manager' | 'cashier' | 'salesman' | 'user';
 
+export interface ShopProfile {
+  id: string; // Shop ID (matches Owner UID)
+  shop_name: string;
+  owner_name: string;
+  owner_email: string;
+  owner_uid: string;
+  phone?: string;
+  address?: string;
+  created_at: string;
+}
+
 export interface User {
   username: string;
   role: UserRole;
@@ -12,10 +23,13 @@ export interface User {
   email?: string;
   isGoogleUser?: boolean;
   photoURL?: string;
+  shopId: string;
+  shopName?: string;
 }
 
 export interface StaffAccount {
   id: string;
+  shop_id?: string;
   username: string;
   password: string;
   name: string;
