@@ -4,11 +4,12 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { doc, getDocFromServer, setDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, getDocFromServer, setDoc, deleteDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { db, auth, googleProvider, signInWithPopup, signOut } from '../firebase';
 import {
   User,
   UserRole,
+  StaffAccount,
   DailyTransaction,
   BackCashTransaction,
   WholesalerBill,
@@ -45,7 +46,8 @@ export type ActiveView =
   | 'customer'
   | 'pos'
   | 'deleted_history'
-  | 'edit_logs';
+  | 'edit_logs'
+  | 'staff_management';
 
 interface BachatSummary {
   dayBeforeLoadSale: number;
@@ -64,10 +66,23 @@ interface EasyloadSaleSummary {
 }
 
 interface POSContextType {
-  // Auth
+  // Auth & Roles
   currentUser: User | null;
   login: (username: string, role?: UserRole) => boolean;
+  loginWithGoogle: () => Promise<{ success: boolean; error?: string }>;
+  loginStaff: (username: string, password: string) => { success: boolean; error?: string };
   logout: () => void;
+
+  // Staff Management
+  staffAccounts: StaffAccount[];
+  addStaffAccount: (account: Omit<StaffAccount, 'id' | 'created_at' | 'created_by'>) => boolean;
+  updateStaffAccount: (account: StaffAccount) => boolean;
+  deleteStaffAccount: (id: string) => void;
+
+  // Clean Zero Store vs Demo Store
+  isCleanStore: boolean;
+  resetToCleanZeroData: () => void;
+  loadDemoSampleData: () => void;
 
   // View Navigation
   activeView: ActiveView;
@@ -177,7 +192,16 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // 1. Initial State from LocalStorage
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('taj_pos_user');
-    return saved ? JSON.parse(saved) : { username: 'Admin', role: 'admin' };
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [isCleanStore, setIsCleanStore] = useState<boolean>(() => {
+    return localStorage.getItem('taj_pos_is_clean_store') === 'true';
+  });
+
+  const [staffAccounts, setStaffAccounts] = useState<StaffAccount[]>(() => {
+    const saved = localStorage.getItem('taj_pos_staff_accounts');
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [activeView, setActiveView] = useState<ActiveView>('dashboard');
@@ -396,6 +420,29 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem('taj_pos_settings', JSON.stringify(systemSettings));
   }, [systemSettings]);
 
+  useEffect(() => {
+    localStorage.setItem('taj_pos_staff_accounts', JSON.stringify(staffAccounts));
+  }, [staffAccounts]);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(collection(db, 'staff_accounts'), snapshot => {
+        const list: StaffAccount[] = [];
+        snapshot.forEach(docSnap => {
+          list.push(docSnap.data() as StaffAccount);
+        });
+        if (list.length > 0) {
+          setStaffAccounts(list);
+        }
+      }, err => {
+        console.warn('Staff accounts listener note:', err);
+      });
+      return () => unsub();
+    } catch (e) {
+      // Offline fallback
+    }
+  }, []);
+
   // Auth Functions
   const login = (username: string, role: UserRole = 'user') => {
     const userRole = username.toLowerCase() === 'admin' ? 'admin' : role;
@@ -404,8 +451,139 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return true;
   };
 
+  const loginWithGoogle = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const googleUser = result.user;
+      const userObj: User = {
+        username: googleUser.email?.split('@')[0] || 'Admin',
+        name: googleUser.displayName || 'Shop Owner',
+        email: googleUser.email || undefined,
+        role: 'admin',
+        isGoogleUser: true,
+        photoURL: googleUser.photoURL || undefined
+      };
+      setCurrentUser(userObj);
+      localStorage.setItem('taj_pos_user', JSON.stringify(userObj));
+
+      // Sync admin user profile to Firestore
+      setDoc(doc(db, 'users', googleUser.uid), {
+        uid: googleUser.uid,
+        email: googleUser.email,
+        displayName: googleUser.displayName,
+        role: 'admin',
+        lastLogin: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
+
+      return { success: true };
+    } catch (err: any) {
+      console.error('Google login error:', err);
+      return { success: false, error: err.message || 'Google Login failed' };
+    }
+  };
+
+  const loginStaff = (username: string, password: string): { success: boolean; error?: string } => {
+    const cleanUsername = username.trim().toLowerCase();
+    const account = staffAccounts.find(
+      acc => acc.username.toLowerCase() === cleanUsername
+    );
+    if (!account) {
+      return { success: false, error: 'User nahi mila! Barahe karam Admin ki di gayi details darj karein.' };
+    }
+    if (!account.is_active) {
+      return { success: false, error: 'Yeh account band (disabled) hai. Admin se rabta karein.' };
+    }
+    if (account.password !== password) {
+      return { success: false, error: 'Ghalat Password! Barahe karam sahi password darj karein.' };
+    }
+    const userObj: User = {
+      username: account.username,
+      name: account.name,
+      role: account.role,
+      isGoogleUser: false
+    };
+    setCurrentUser(userObj);
+    localStorage.setItem('taj_pos_user', JSON.stringify(userObj));
+    return { success: true };
+  };
+
   const logout = () => {
+    signOut(auth).catch(() => {});
     setCurrentUser(null);
+    localStorage.removeItem('taj_pos_user');
+  };
+
+  // Staff Accounts Management
+  const addStaffAccount = (accountData: Omit<StaffAccount, 'id' | 'created_at' | 'created_by'>): boolean => {
+    if (staffAccounts.some(a => a.username.toLowerCase() === accountData.username.trim().toLowerCase())) {
+      alert('Yeh username pehle se mojood hai! Doosra username darj karein.');
+      return false;
+    }
+    const newStaff: StaffAccount = {
+      ...accountData,
+      username: accountData.username.trim(),
+      id: `staff-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      created_by: currentUser?.email || currentUser?.username || 'Admin',
+      is_active: true
+    };
+    setStaffAccounts(prev => [newStaff, ...prev]);
+    setDoc(doc(db, 'staff_accounts', newStaff.id), newStaff).catch(() => {});
+    return true;
+  };
+
+  const updateStaffAccount = (updated: StaffAccount): boolean => {
+    setStaffAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
+    setDoc(doc(db, 'staff_accounts', updated.id), updated).catch(() => {});
+    return true;
+  };
+
+  const deleteStaffAccount = (id: string) => {
+    setStaffAccounts(prev => prev.filter(a => a.id !== id));
+    deleteDoc(doc(db, 'staff_accounts', id)).catch(() => {});
+  };
+
+  // Clean Zero Store vs Demo Store
+  const resetToCleanZeroData = () => {
+    setDailyTransactions([]);
+    setBackCashTransactions([]);
+    setWholesalers([]);
+    setCustomers([]);
+    setEasyloadRecords({});
+    setBottleItems([]);
+    setStockTransactions([]);
+    setEditHistory([]);
+    setDeletedHistory([]);
+    setIsCleanStore(true);
+    localStorage.setItem('taj_pos_is_clean_store', 'true');
+    localStorage.setItem('taj_pos_daily_tx', JSON.stringify([]));
+    localStorage.setItem('taj_pos_back_tx', JSON.stringify([]));
+    localStorage.setItem('taj_pos_wholesalers', JSON.stringify([]));
+    localStorage.setItem('taj_pos_customers', JSON.stringify([]));
+    localStorage.setItem('taj_pos_easyload', JSON.stringify({}));
+    localStorage.setItem('taj_pos_bottles', JSON.stringify([]));
+    localStorage.setItem('taj_pos_stock_tx', JSON.stringify([]));
+    localStorage.setItem('taj_pos_edit_history', JSON.stringify([]));
+    localStorage.setItem('taj_pos_deleted_history', JSON.stringify([]));
+  };
+
+  const loadDemoSampleData = () => {
+    setDailyTransactions(initialDailyTransactions);
+    setBackCashTransactions(initialBackCashTransactions);
+    setWholesalers(initialWholesalers);
+    setCustomers(initialCustomers);
+    setEasyloadRecords(initialEasyloadRecords);
+    setBottleItems(initialBottleItems);
+    setStockTransactions(initialStockTransactions);
+    setIsCleanStore(false);
+    localStorage.setItem('taj_pos_is_clean_store', 'false');
+    localStorage.setItem('taj_pos_daily_tx', JSON.stringify(initialDailyTransactions));
+    localStorage.setItem('taj_pos_back_tx', JSON.stringify(initialBackCashTransactions));
+    localStorage.setItem('taj_pos_wholesalers', JSON.stringify(initialWholesalers));
+    localStorage.setItem('taj_pos_customers', JSON.stringify(initialCustomers));
+    localStorage.setItem('taj_pos_easyload', JSON.stringify(initialEasyloadRecords));
+    localStorage.setItem('taj_pos_bottles', JSON.stringify(initialBottleItems));
+    localStorage.setItem('taj_pos_stock_tx', JSON.stringify(initialStockTransactions));
   };
 
   const togglePrivacy = () => setIsPrivacyOn(prev => !prev);
@@ -1083,7 +1261,16 @@ export const POSProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       value={{
         currentUser,
         login,
+        loginWithGoogle,
+        loginStaff,
         logout,
+        staffAccounts,
+        addStaffAccount,
+        updateStaffAccount,
+        deleteStaffAccount,
+        isCleanStore,
+        resetToCleanZeroData,
+        loadDemoSampleData,
         activeView,
         setActiveView,
         filterDate,

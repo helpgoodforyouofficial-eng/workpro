@@ -150,6 +150,10 @@
     "/deleted_history/{delId}": {
       "schema": "DeletedHistoryRecord",
       "description": "Audit logs for deleted items"
+    },
+    "/staff_accounts/{staffId}": {
+      "schema": "StaffAccount",
+      "description": "Staff member login accounts created by Admin"
     }
   }
 }

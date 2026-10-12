@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -10,8 +10,12 @@ export const db =
     ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
     : getFirestore(app);
 export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-// Authenticate client session
-signInAnonymously(auth).catch((err) => {
-  console.log('Firebase anonymous session:', err);
+export { signInWithPopup, signOut, GoogleAuthProvider };
+
+// Authenticate client session anonymously as baseline if needed
+signInAnonymously(auth).catch(() => {
+  // Silent fallback
 });

@@ -24,6 +24,7 @@ import { CustomerBillsView } from './views/CustomerBillsView';
 import { POSSaleView } from './views/POSSaleView';
 import { DeletedHistoryView } from './views/DeletedHistoryView';
 import { EditHistoryLogsView } from './views/EditHistoryLogsView';
+import { StaffManagementView } from './views/StaffManagementView';
 
 const MainAppContent: React.FC = () => {
   const {
@@ -34,7 +35,10 @@ const MainAppContent: React.FC = () => {
     installApp,
     showTopInstallBanner,
     setShowTopInstallBanner,
-    isFirebaseConnected
+    isFirebaseConnected,
+    isCleanStore,
+    resetToCleanZeroData,
+    loadDemoSampleData
   } = usePOS();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -66,6 +70,8 @@ const MainAppContent: React.FC = () => {
         return <DeletedHistoryView />;
       case 'edit_logs':
         return <EditHistoryLogsView />;
+      case 'staff_management':
+        return <StaffManagementView />;
       default:
         return <DashboardView />;
     }

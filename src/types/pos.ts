@@ -9,6 +9,21 @@ export interface User {
   username: string;
   role: UserRole;
   name?: string;
+  email?: string;
+  isGoogleUser?: boolean;
+  photoURL?: string;
+}
+
+export interface StaffAccount {
+  id: string;
+  username: string;
+  password: string;
+  name: string;
+  role: UserRole;
+  phone?: string;
+  created_at: string;
+  created_by: string;
+  is_active: boolean;
 }
 
 export type TransactionType = 'opening' | 'in' | 'out' | 'bill_add' | 'payment';

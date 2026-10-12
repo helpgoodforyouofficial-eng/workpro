@@ -24,7 +24,9 @@ import {
   Upload,
   Zap,
   CheckCircle2,
-  Cloud
+  Cloud,
+  UserCheck,
+  RotateCcw
 } from 'lucide-react';
 import { usePOS, ActiveView } from '../context/POSContext';
 import { TajLogo } from './TajLogo';
@@ -48,7 +50,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     importDataJSON,
     isAppInstalled,
     installApp,
-    isFirebaseConnected
+    isFirebaseConnected,
+    isCleanStore,
+    resetToCleanZeroData,
+    loadDemoSampleData
   } = usePOS();
 
   const handleNav = (view: ActiveView) => {
@@ -88,11 +93,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     { id: 'wholesaler', label: 'Wholesaler Khata', icon: Truck },
     { id: 'customer', label: 'Customer Khata', icon: Users },
     { id: 'pos', label: 'New Sale (POS Counter)', icon: ShoppingCart },
+    { id: 'staff_management', label: 'Staff & Users (عملہ)', icon: UserCheck },
     { id: 'deleted_history', label: 'Deleted Logs (Trash)', icon: Trash2 }
   ];
 
   const userRole = currentUser?.role || 'admin';
   const navItems = allNavItems.filter(item => {
+    if (item.id === 'staff_management') return userRole === 'admin';
     if (userRole === 'admin') return true;
     if (userRole === 'manager') return item.id !== 'deleted_history';
     if (userRole === 'cashier') {
@@ -280,6 +287,36 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <input type="file" accept=".json" onChange={handleImportFile} className="hidden" />
             </label>
           </div>
+
+          {/* Admin Clean Zero / Demo Toggle */}
+          {userRole === 'admin' && (
+            <button
+              type="button"
+              onClick={() => {
+                if (isCleanStore) {
+                  if (window.confirm('Kya aap sample demo data dobara load karna chahte hain?')) {
+                    loadDemoSampleData();
+                  }
+                } else {
+                  if (
+                    window.confirm(
+                      'Khabardar: Kya aap waqai tamam demo data mita kar bilkul 0 se apna asli karobar shuru karna chahte hain?'
+                    )
+                  ) {
+                    resetToCleanZeroData();
+                  }
+                }
+              }}
+              className={`w-full py-1.5 px-2 rounded-xl text-[10px] font-bold border flex items-center justify-center gap-1.5 transition-colors ${
+                isCleanStore
+                  ? 'bg-amber-950/40 border-amber-600/50 text-amber-300 hover:bg-amber-900/60'
+                  : 'bg-rose-950/40 border-rose-600/50 text-rose-300 hover:bg-rose-900/60'
+              }`}
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>{isCleanStore ? 'Demo Sample Data Load Karein' : 'Start Fresh (تمام حساب 0 کریں)'}</span>
+            </button>
+          )}
 
           {/* PWA Install Button or Already Installed Badge */}
           {isAppInstalled ? (
